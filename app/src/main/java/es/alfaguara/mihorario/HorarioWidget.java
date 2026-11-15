@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -23,7 +24,8 @@ import java.util.Locale;
 
 /**
  * Widget «Mi horario»: el día elegido (‹ anterior · siguiente ›) tal y como lo enseña «Horarios» en la app web;
- * si es hoy, además la clase de ahora o la próxima, tareas y coche. Solo lectura.
+ * si es hoy, además la clase de ahora o la próxima. Debajo, una lista que se desplaza: actividades, turnos de coche,
+ * tareas y quién está de baja, con una línea entre bloques y las filas alternando el color. Solo lectura.
  * Se actualiza solo a menos diez y a y veinte de cada hora, al empezar y acabar cada clase de hoy, a medianoche,
  * al pulsar ⟳ y al abrir la app. Al tocarlo se abre la ventana de Horarios en ese día.
  */
@@ -206,7 +208,8 @@ public class HorarioWidget extends AppWidgetProvider {
 
         String rel = elegido.equals(hoyIso) ? "Hoy" : elegido.equals(Datos.sumar(hoyIso, 1)) ? "Mañana" : elegido.equals(Datos.sumar(hoyIso, -1)) ? "Ayer" : "";
         String cab = diaDe(elegido) + " " + fechaCorta(elegido) + (rel.isEmpty() ? "" : " · " + rel);
-        String grande, sig = "", lista = "", pie = "";
+        String grande, sig = "";
+        JSONArray filas = new JSONArray();
 
         if (o == null) {
             grande = Datos.enlace(c) == null ? "Toca aquí y pega tu enlace del widget" : "Cargando…";
@@ -215,7 +218,7 @@ public class HorarioWidget extends AppWidgetProvider {
         } else if (S == null) {
             // servidor antiguo (sin el día elegido): lo de siempre
             grande = s(o, "texto_clases");
-            lista = s(o, "texto_hoy");
+            lineas(filas, "Hoy", s(o, "texto_hoy"));
         } else {
             boolean esHoy = S.optBoolean("hoy", false);
             String sinClase = s(S, "sin_clase");
@@ -234,15 +237,24 @@ public class HorarioWidget extends AppWidgetProvider {
                 if (A != null && A.length() > 0) { ini = s(A.optJSONObject(0), "i"); fin = s(A.optJSONObject(A.length() - 1), "f"); }
                 grande = n + (n == 1 ? " actividad" : " actividades") + (ini.isEmpty() ? "" : " · " + ini + "–" + fin);
             }
-            lista = s(S, "texto");
-            if (lista.equals(grande)) lista = "";
-            if (esHoy) {
-                int fuera = o.optInt("tareas_fuera", 0), thoy = o.optInt("tareas_hoy", 0);
-                StringBuilder p = new StringBuilder();
-                if (fuera > 0) p.append("⚠ ").append(fuera).append(fuera == 1 ? " tarea vencida" : " tareas vencidas");
-                if (thoy > 0) { if (p.length() > 0) p.append(" · "); p.append(thoy).append(thoy == 1 ? " tarea hoy" : " tareas hoy"); }
-                pie = p.toString();
-            }
+            JSONArray B = S.optJSONArray("bloques");
+            if (B != null) {
+                for (int b = 0; b < B.length(); b++) {
+                    JSONObject bl = B.optJSONObject(b);
+                    if (bl == null) continue;
+                    boolean rojo = bl.optBoolean("rojo", false);
+                    JSONArray F = bl.optJSONArray("filas");
+                    try {
+                        filas.put(new JSONObject().put("k", "tit").put("t", s(bl, "tit")).put("rojo", rojo));
+                        if (F != null) for (int i = 0; i < F.length(); i++) {
+                            JSONObject f = F.optJSONObject(i);
+                            if (f == null) continue;
+                            filas.put(new JSONObject().put("k", "fila").put("t", s(f, "t")).put("s", s(f, "s"))
+                                    .put("c", rojo ? "rojo" : s(f, "c")).put("alt", i % 2 == 0));
+                        }
+                    } catch (Exception ignored) {}
+                }
+            } else lineas(filas, "Este día", s(S, "texto"));
         }
         long t = Datos.cuando(c);
         String act = t > 0 ? "Act. " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(t)) : "";
@@ -252,22 +264,44 @@ public class HorarioWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.tvGrande, grande);
         v.setTextViewText(R.id.tvSig, sig);
         v.setViewVisibility(R.id.tvSig, sig.isEmpty() ? View.GONE : View.VISIBLE);
-        v.setTextViewText(R.id.tvHoy, lista);
-        v.setViewVisibility(R.id.tvHoy, lista.isEmpty() ? View.GONE : View.VISIBLE);
-        v.setTextViewText(R.id.tvPie, pie);
-        v.setViewVisibility(R.id.tvPie, pie.isEmpty() ? View.GONE : View.VISIBLE);
+        // 1.2: lista con desplazamiento (ListaServicio la dibuja a partir de «filas»)
+        Datos.prefs(c).edit().putString("filas", filas.toString()).apply();
+        Intent srv = new Intent(c, ListaServicio.class);
+        srv.setData(Uri.parse(srv.toUri(Intent.URI_INTENT_SCHEME)));
+        v.setRemoteAdapter(R.id.lista, srv);
+        v.setEmptyView(R.id.lista, R.id.vacia);
+        v.setViewVisibility(R.id.vacia, filas.length() == 0 ? View.VISIBLE : View.GONE);
         v.setTextViewText(R.id.tvEstado, estado);
 
         Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .putExtra(MainActivity.EXTRA_DIA, elegido);
         PendingIntent pa = PendingIntent.getActivity(c, 2, abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         v.setOnClickPendingIntent(R.id.raiz, pa);
+        v.setOnClickPendingIntent(R.id.tvGrande, pa);
+        PendingIntent plantilla = PendingIntent.getActivity(c, 7, new Intent(abrir),
+                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0));
+        v.setPendingIntentTemplate(R.id.lista, plantilla);
         v.setOnClickPendingIntent(R.id.btRefrescar, pendiente(c, ACT_REFRESCAR, 3));
         v.setOnClickPendingIntent(R.id.btAnterior, pendiente(c, ACT_ANTERIOR, 4));
         v.setOnClickPendingIntent(R.id.btSiguiente, pendiente(c, ACT_SIGUIENTE, 5));
         v.setOnClickPendingIntent(R.id.tvCab, pendiente(c, ACT_HOY, 6));
 
         AppWidgetManager m = AppWidgetManager.getInstance(c);
-        m.updateAppWidget(new ComponentName(c, HorarioWidget.class), v);
+        ComponentName cn = new ComponentName(c, HorarioWidget.class);
+        m.updateAppWidget(cn, v);
+        m.notifyAppWidgetViewDataChanged(m.getAppWidgetIds(cn), R.id.lista);
+    }
+
+    /** Un bloque a partir de un texto con una línea por fila (servidores antiguos). */
+    private static void lineas(JSONArray filas, String titulo, String texto) {
+        if (texto == null || texto.trim().isEmpty()) return;
+        try {
+            filas.put(new JSONObject().put("k", "tit").put("t", titulo));
+            int i = 0;
+            for (String x : texto.split("\n")) {
+                if (x.trim().isEmpty()) continue;
+                filas.put(new JSONObject().put("k", "fila").put("t", x.trim()).put("s", "").put("c", "").put("alt", i++ % 2 == 0));
+            }
+        } catch (Exception ignored) {}
     }
 }
