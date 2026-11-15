@@ -1,0 +1,45 @@
+name: Compilar la app (APK)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Preparar el APK
+        run: cp app/build/outputs/apk/release/app-release.apk MiHorario.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MiHorario
+          path: MiHorario.apk
+
+      - name: Publicar para descargar
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Mi horario 1.0.${{ github.run_number }}
+          body: |
+            Descarga **MiHorario.apk** desde el móvil e instálala (Android 8 o superior).
+            Si Android avisa de «origen desconocido», permite instalar apps desde el navegador para esta descarga.
+          files: MiHorario.apk
