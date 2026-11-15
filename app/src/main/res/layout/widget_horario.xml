@@ -12,19 +12,42 @@
         android:background="@drawable/cabecera_widget"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
-        android:paddingEnd="4dp">
+        android:paddingStart="2dp"
+        android:paddingEnd="2dp">
+
+        <TextView
+            android:id="@+id/btAnterior"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/dia_anterior"
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvCab"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="36dp"
             android:layout_weight="1"
             android:ellipsize="end"
+            android:gravity="center"
             android:maxLines="1"
             android:text="Mi horario"
             android:textColor="#FFFFFF"
             android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btSiguiente"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:contentDescription="@string/dia_siguiente"
+            android:gravity="center"
+            android:text="›"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <ImageView
