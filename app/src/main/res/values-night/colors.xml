@@ -7,4 +7,10 @@
     <color name="tarjeta">#F016302A</color>
     <color name="texto">#E6EFE9</color>
     <color name="suave">#9DB3A7</color>
+    <color name="fila_a">#268FD3B0</color>
+    <color name="fila_b">#00000000</color>
+    <color name="fila_ahora">#4D8FD3B0</color>
+    <color name="separador">#8FD3B0</color>
+    <color name="rojo">#FF8A80</color>
+    <color name="rojo_fondo">#26FF8A80</color>
 </resources>
