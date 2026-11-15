@@ -111,7 +111,7 @@
             android:layout_height="0dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/cargando"
+            android:text="@string/sin_datos"
             android:textColor="@color/suave"
             android:textSize="12sp"
             android:visibility="gone" />
