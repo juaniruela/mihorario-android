@@ -11,5 +11,6 @@
     <string name="actualizar">Actualizar</string>
     <string name="dia_anterior">Día anterior</string>
     <string name="dia_siguiente">Día siguiente</string>
-    <string name="cargando">Cargando…</string>
+    <string name="cargando"></string>
+    <string name="sin_datos">Sin datos todavía: pulsa ⟳</string>
 </resources>
