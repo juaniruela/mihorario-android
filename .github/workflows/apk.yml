@@ -27,7 +27,9 @@ jobs:
         run: gradle assembleRelease --no-daemon --stacktrace
 
       - name: Preparar el APK
-        run: cp app/build/outputs/apk/release/app-release.apk MiHorario.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk MiHorario.apk
+          echo "VERSION=$(grep -oP "versionName '\K[^']+" app/build.gradle)" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -37,8 +39,8 @@ jobs:
       - name: Publicar para descargar
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.${{ github.run_number }}
-          name: Mi horario 1.1.${{ github.run_number }}
+          tag_name: v${{ env.VERSION }}.${{ github.run_number }}
+          name: Mi horario ${{ env.VERSION }} (compilación ${{ github.run_number }})
           body: |
             Descarga **MiHorario.apk** desde el móvil e instálala (Android 8 o superior).
             Si Android avisa de «origen desconocido», permite instalar apps desde el navegador para esta descarga.
