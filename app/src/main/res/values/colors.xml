@@ -13,4 +13,6 @@
     <color name="separador">#1F4A3A</color>
     <color name="rojo">#B3261E</color>
     <color name="rojo_fondo">#1AB3261E</color>
+    <color name="aviso_fondo">#FFF3DD</color>
+    <color name="aviso_texto">#6B4A00</color>
 </resources>
