@@ -30,7 +30,10 @@ public class ListaServicio extends RemoteViewsService {
         @Override public void onDataSetChanged() { cargar(); }
         @Override public void onDestroy() {}
         @Override public int getCount() { return filas.length(); }
-        @Override public RemoteViews getLoadingView() { return null; }
+        @Override public RemoteViews getLoadingView() {
+            // 1.3: nada de «Cargando…»: una fila vacía mientras se prepara
+            return new RemoteViews(c.getPackageName(), R.layout.fila);
+        }
         @Override public int getViewTypeCount() { return 2; }
         @Override public long getItemId(int i) { return i; }
         @Override public boolean hasStableIds() { return false; }
@@ -58,7 +61,7 @@ public class ListaServicio extends RemoteViewsService {
                 v.setTextViewText(R.id.ft, t);
                 v.setTextViewText(R.id.fs, s);
                 v.setViewVisibility(R.id.fs, s.isEmpty() ? View.GONE : View.VISIBLE);
-                int fondo = "ahora".equals(cl) ? R.color.fila_ahora : "rojo".equals(cl) && f.optBoolean("alt") ? R.color.rojo_fondo
+                int fondo = "ahora".equals(cl) || "mio".equals(cl) ? R.color.fila_ahora : "rojo".equals(cl) && f.optBoolean("alt") ? R.color.rojo_fondo
                         : f.optBoolean("alt") ? R.color.fila_a : R.color.fila_b;
                 v.setInt(R.id.fila_raiz, "setBackgroundResource", fondo);
                 int texto = "rojo".equals(cl) ? c.getColor(R.color.rojo) : "pasada".equals(cl) ? c.getColor(R.color.suave) : c.getColor(R.color.texto);

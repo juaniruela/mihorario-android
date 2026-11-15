@@ -52,7 +52,7 @@ public class HorarioWidget extends AppWidgetProvider {
             case ACT_HOY: {
                 String nuevo = ACT_HOY.equals(a) ? Datos.hoy() : Datos.sumar(Datos.sel(c), ACT_ANTERIOR.equals(a) ? -1 : 1);
                 Datos.elegir(c, nuevo);
-                pintar(c, Datos.ultimoJson(c), "Cargando…");
+                pintar(c, Datos.ultimoJson(c), "Actualizando…");
                 actualizar(c, goAsync());
                 return;
             }
@@ -212,9 +212,9 @@ public class HorarioWidget extends AppWidgetProvider {
         JSONArray filas = new JSONArray();
 
         if (o == null) {
-            grande = Datos.enlace(c) == null ? "Toca aquí y pega tu enlace del widget" : "Cargando…";
+            grande = Datos.enlace(c) == null ? "Toca aquí y pega tu enlace del widget" : "";
         } else if (!valen) {
-            grande = "Cargando…";
+            grande = "";
         } else if (S == null) {
             // servidor antiguo (sin el día elegido): lo de siempre
             grande = s(o, "texto_clases");
@@ -262,6 +262,7 @@ public class HorarioWidget extends AppWidgetProvider {
 
         v.setTextViewText(R.id.tvCab, cab);
         v.setTextViewText(R.id.tvGrande, grande);
+        v.setViewVisibility(R.id.tvGrande, grande.isEmpty() ? View.GONE : View.VISIBLE);
         v.setTextViewText(R.id.tvSig, sig);
         v.setViewVisibility(R.id.tvSig, sig.isEmpty() ? View.GONE : View.VISIBLE);
         // 1.2: lista con desplazamiento (ListaServicio la dibuja a partir de «filas»)
