@@ -2,10 +2,10 @@
 <resources>
     <string name="app_name">Mi horario</string>
     <string name="widget_nombre">Mi horario</string>
-    <string name="widget_desc">Tu clase de ahora, las de hoy, tareas y coche (solo consulta)</string>
+    <string name="widget_desc">Tu horario del día, turnos de coche, tareas y bajas (solo consulta)</string>
     <string name="titulo_config">Mi horario · IES Alfaguara</string>
     <string name="ayuda">Pega aquí tu enlace privado del widget.\n\n1. En la app de Horarios (en el ordenador o en el móvil) entra en Mi cuenta → «📱 Mi horario en el móvil» y pulsa «Generar un enlace nuevo».\n2. Pulsa «Copiar enlace de la ventana» (o escanea el QR, abre el enlace y en Chrome usa Compartir → Mi horario).\n3. Vuelve aquí, pulsa «Pegar» y «Guardar».\n\nDespués añade el widget: mantén pulsado un hueco de la pantalla de inicio → Widgets → Mi horario.</string>
-    <string name="como_widget">Mantén pulsado un hueco de la pantalla de inicio → Widgets → busca «Mi horario» → arrástralo a la pantalla. Puedes cambiarle el tamaño manteniéndolo pulsado.\n\nCon ‹ y › cambias de día (tocando la fecha vuelves a hoy). Al tocarlo se abre la ventana de Horarios de ese día; el botón ⟳ lo actualiza al momento. Además se actualiza solo a menos diez y a y veinte de cada hora, al empezar y acabar cada clase y a medianoche.</string>
+    <string name="como_widget">Mantén pulsado un hueco de la pantalla de inicio → Widgets → busca «Mi horario» → arrástralo a la pantalla. Puedes cambiarle el tamaño manteniéndolo pulsado.\n\nCon ‹ y › cambias de día (tocando la fecha vuelves a hoy). Debajo, la lista del día (actividades, turnos de coche, tareas y quién está de baja) se desplaza con el dedo si no cabe. Al tocarlo se abre la ventana de Horarios de ese día; el botón ⟳ lo actualiza al momento. Además se actualiza solo a menos diez y a y veinte de cada hora, al empezar y acabar cada clase y a medianoche.</string>
     <string name="pegar">Pegar</string>
     <string name="guardar">Guardar</string>
     <string name="actualizar">Actualizar</string>
