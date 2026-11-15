@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 10 o más: claro u oscuro según el móvil -->
+    <style name="Tema" parent="@android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:colorPrimary">#1F4A3A</item>
+        <item name="android:colorPrimaryDark">#163A2D</item>
+        <item name="android:colorAccent">#E8710A</item>
+        <item name="android:statusBarColor">#163A2D</item>
+    </style>
+</resources>
