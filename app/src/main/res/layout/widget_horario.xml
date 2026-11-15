@@ -64,13 +64,15 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:orientation="vertical"
-        android:paddingStart="12dp"
+        android:paddingStart="8dp"
         android:paddingTop="6dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="6dp">
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp">
 
         <TextView
             android:id="@+id/tvGrande"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
@@ -82,6 +84,8 @@
 
         <TextView
             android:id="@+id/tvSig"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
@@ -90,28 +94,26 @@
             android:textSize="13sp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/tvHoy"
+        <!-- 1.2: la lista del día (actividades, turnos, tareas, bajas) se desplaza si no cabe -->
+        <ListView
+            android:id="@+id/lista"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginTop="4dp"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:lineSpacingExtra="1dp"
-            android:textColor="@color/suave"
-            android:textSize="12sp"
-            android:visibility="gone" />
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="vertical" />
 
         <TextView
-            android:id="@+id/tvPie"
+            android:id="@+id/vacia"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:textColor="@color/naranja"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/cargando"
+            android:textColor="@color/suave"
             android:textSize="12sp"
-            android:textStyle="bold"
             android:visibility="gone" />
 
         <TextView
