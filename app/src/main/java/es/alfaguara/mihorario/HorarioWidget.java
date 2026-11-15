@@ -7,36 +7,67 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.os.SystemClock;
+import android.os.Build;
 import android.view.View;
 import android.widget.RemoteViews;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * Widget «Mi horario»: la clase de ahora (o la próxima), las clases de hoy, tareas y coche.
- * Solo lectura. Se actualiza cada 15 minutos aproximadamente, al pulsar ⟳ y al abrir la app.
- * Al tocarlo se abre la ventana de Horarios.
+ * Widget «Mi horario»: el día elegido (‹ anterior · siguiente ›) tal y como lo enseña «Horarios» en la app web;
+ * si es hoy, además la clase de ahora o la próxima, tareas y coche. Solo lectura.
+ * Se actualiza solo a menos diez y a y veinte de cada hora, al empezar y acabar cada clase de hoy, a medianoche,
+ * al pulsar ⟳ y al abrir la app. Al tocarlo se abre la ventana de Horarios en ese día.
  */
 public class HorarioWidget extends AppWidgetProvider {
     static final String ACT_REFRESCAR = "es.alfaguara.mihorario.REFRESCAR";
+    static final String ACT_AUTO = "es.alfaguara.mihorario.AUTO";
+    static final String ACT_ANTERIOR = "es.alfaguara.mihorario.ANTERIOR";
+    static final String ACT_SIGUIENTE = "es.alfaguara.mihorario.SIGUIENTE";
+    static final String ACT_HOY = "es.alfaguara.mihorario.HOY";
 
     @Override
     public void onUpdate(Context c, AppWidgetManager m, int[] ids) {
-        programar(c);
+        Datos.volverAHoySiToca(c);
         actualizar(c, goAsync());
     }
 
     @Override
     public void onReceive(Context c, Intent i) {
-        if (ACT_REFRESCAR.equals(i.getAction())) {
-            pintar(c, Datos.ultimoJson(c), "Actualizando…");
-            actualizar(c, goAsync());
-            return;
+        String a = i.getAction();
+        if (a == null) { super.onReceive(c, i); return; }
+        switch (a) {
+            case ACT_ANTERIOR:
+            case ACT_SIGUIENTE:
+            case ACT_HOY: {
+                String nuevo = ACT_HOY.equals(a) ? Datos.hoy() : Datos.sumar(Datos.sel(c), ACT_ANTERIOR.equals(a) ? -1 : 1);
+                Datos.elegir(c, nuevo);
+                pintar(c, Datos.ultimoJson(c), "Cargando…");
+                actualizar(c, goAsync());
+                return;
+            }
+            case ACT_REFRESCAR:
+                pintar(c, Datos.ultimoJson(c), "Actualizando…");
+                actualizar(c, goAsync());
+                return;
+            case ACT_AUTO:
+            case Intent.ACTION_BOOT_COMPLETED:
+            case Intent.ACTION_MY_PACKAGE_REPLACED:
+            case Intent.ACTION_TIME_CHANGED:
+            case Intent.ACTION_TIMEZONE_CHANGED:
+            case "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED":
+                if (!hayWidgets(c)) return;
+                Datos.volverAHoySiToca(c);
+                actualizar(c, goAsync());
+                return;
         }
         super.onReceive(c, i);
     }
@@ -47,39 +78,100 @@ public class HorarioWidget extends AppWidgetProvider {
     @Override
     public void onDisabled(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.cancel(intentRefrescar(c));
+        if (am != null) am.cancel(pendiente(c, ACT_AUTO, 1));
+    }
+
+    private static boolean hayWidgets(Context c) {
+        int[] ids = AppWidgetManager.getInstance(c).getAppWidgetIds(new ComponentName(c, HorarioWidget.class));
+        return ids != null && ids.length > 0;
     }
 
     /** Pide al widget que se actualice (desde la app, al guardar el enlace o al abrirla). */
     static void refrescar(Context c) {
-        Intent i = new Intent(c, HorarioWidget.class).setAction(ACT_REFRESCAR);
-        c.sendBroadcast(i);
+        c.sendBroadcast(new Intent(c, HorarioWidget.class).setAction(ACT_REFRESCAR));
     }
 
-    private static PendingIntent intentRefrescar(Context c) {
-        Intent i = new Intent(c, HorarioWidget.class).setAction(ACT_REFRESCAR);
-        return PendingIntent.getBroadcast(c, 1, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    private static PendingIntent pendiente(Context c, String accion, int codigo) {
+        Intent i = new Intent(c, HorarioWidget.class).setAction(accion);
+        return PendingIntent.getBroadcast(c, codigo, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 
-    /** Actualización periódica (inexacta, para no gastar batería): cada 15 minutos. */
-    private static void programar(Context c) {
+    /* ------------------------------------------------------------------ */
+    /*  Actualizaciones automáticas: a menos diez y a y veinte de cada hora, */
+    /*  al empezar y acabar cada clase de hoy y a medianoche.              */
+    /* ------------------------------------------------------------------ */
+    static long proximaHora(Context c, long ahora) {
+        List<Long> L = new ArrayList<>();
+        Calendar k = Calendar.getInstance();
+        k.setTimeInMillis(ahora);
+        k.set(Calendar.SECOND, 5);
+        k.set(Calendar.MILLISECOND, 0);
+        // :20 y :50 de esta hora y de la siguiente
+        for (int h = 0; h <= 1; h++) for (int mm : new int[]{20, 50}) {
+            Calendar x = (Calendar) k.clone();
+            x.add(Calendar.HOUR_OF_DAY, h);
+            x.set(Calendar.MINUTE, mm);
+            L.add(x.getTimeInMillis());
+        }
+        // medianoche (para pasar al día nuevo)
+        Calendar n = (Calendar) k.clone();
+        n.add(Calendar.DAY_OF_MONTH, 1);
+        n.set(Calendar.HOUR_OF_DAY, 0);
+        n.set(Calendar.MINUTE, 1);
+        L.add(n.getTimeInMillis());
+        // inicio y fin de cada clase de hoy
+        try {
+            String js = Datos.ultimoJson(c);
+            JSONObject o = js == null ? null : new JSONObject(js);
+            if (o != null && Datos.hoy().equals(o.optString("fecha"))) {
+                JSONArray cl = o.optJSONArray("clases");
+                if (cl != null) for (int i = 0; i < cl.length(); i++) {
+                    JSONObject x = cl.getJSONObject(i);
+                    for (String campo : new String[]{"i", "f"}) {
+                        String[] p = x.optString(campo, "").split(":");
+                        if (p.length < 2) continue;
+                        Calendar t = (Calendar) k.clone();
+                        t.set(Calendar.HOUR_OF_DAY, Integer.parseInt(p[0].trim()));
+                        t.set(Calendar.MINUTE, Integer.parseInt(p[1].trim()));
+                        L.add(t.getTimeInMillis());
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        long mejor = Long.MAX_VALUE;
+        for (long t : L) if (t > ahora + 30_000 && t < mejor) mejor = t;
+        return mejor;
+    }
+
+    static void programar(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am == null) return;
-        am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME, SystemClock.elapsedRealtime() + AlarmManager.INTERVAL_FIFTEEN_MINUTES,
-                AlarmManager.INTERVAL_FIFTEEN_MINUTES, intentRefrescar(c));
+        if (am == null || !hayWidgets(c)) return;
+        long t = proximaHora(c, System.currentTimeMillis());
+        PendingIntent pi = pendiente(c, ACT_AUTO, 1);
+        try {
+            boolean exacta = Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms();
+            if (exacta) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi);
+            else am.setWindow(AlarmManager.RTC_WAKEUP, t, 60_000, pi);
+        } catch (SecurityException e) {
+            am.setWindow(AlarmManager.RTC_WAKEUP, t, 60_000, pi);
+        }
     }
 
     private static void actualizar(final Context c, final PendingResult pr) {
         final Context app = c.getApplicationContext();
         new Thread(() -> {
             String json = Datos.ultimoJson(app), error = null;
-            if (Datos.enlace(app) == null) error = "Abre la app y pon tu enlace";
-            else {
-                try { json = Datos.descargar(app); }
-                catch (Exception e) { error = e.getMessage() != null && e.getMessage().startsWith("Enlace") ? e.getMessage() : "Sin conexión"; }
+            try {
+                if (Datos.enlace(app) == null) error = "Abre la app y pon tu enlace";
+                else {
+                    try { json = Datos.descargar(app); }
+                    catch (Exception e) { error = e.getMessage() != null && e.getMessage().startsWith("Enlace") ? e.getMessage() : "Sin conexión"; }
+                }
+                pintar(app, json, error);
+                programar(app);
+            } finally {
+                if (pr != null) pr.finish();
             }
-            pintar(app, json, error);
-            if (pr != null) pr.finish();
         }).start();
     }
 
@@ -89,34 +181,68 @@ public class HorarioWidget extends AppWidgetProvider {
         return "null".equals(v) ? "" : v.trim();
     }
 
-    /** Dibuja el widget con los últimos datos. $aviso: texto pequeño en el pie (error o «Actualizando…»). */
+    private static String fechaCorta(String iso) {
+        return iso.length() == 10 ? iso.substring(8, 10) + "/" + iso.substring(5, 7) : iso;
+    }
+
+    private static String diaDe(String iso) {
+        try {
+            Date d = new SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso);
+            String x = new SimpleDateFormat("EEEE", new Locale("es", "ES")).format(d);
+            return Character.toUpperCase(x.charAt(0)) + x.substring(1);
+        } catch (Exception e) { return ""; }
+    }
+
+    /** Dibuja el widget con los últimos datos. aviso: texto pequeño en el pie (error, «Cargando…»…). */
     static void pintar(Context c, String json, String aviso) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_horario);
         JSONObject o = null;
         try { if (json != null) o = new JSONObject(json); } catch (Exception ignored) {}
 
-        String cab = "Mi horario";
-        String grande, sig = "", hoy = "", pie = "";
+        String elegido = Datos.sel(c), hoyIso = Datos.hoy();
+        JSONObject S = o != null ? o.optJSONObject("sel") : null;
+        // los datos guardados son de otro día: mientras llegan los nuevos, solo la cabecera
+        boolean valen = S != null ? elegido.equals(s(S, "fecha")) : (o != null && elegido.equals(s(o, "fecha")));
+
+        String rel = elegido.equals(hoyIso) ? "Hoy" : elegido.equals(Datos.sumar(hoyIso, 1)) ? "Mañana" : elegido.equals(Datos.sumar(hoyIso, -1)) ? "Ayer" : "";
+        String cab = diaDe(elegido) + " " + fechaCorta(elegido) + (rel.isEmpty() ? "" : " · " + rel);
+        String grande, sig = "", lista = "", pie = "";
+
         if (o == null) {
             grande = Datos.enlace(c) == null ? "Toca aquí y pega tu enlace del widget" : "Cargando…";
+        } else if (!valen) {
+            grande = "Cargando…";
+        } else if (S == null) {
+            // servidor antiguo (sin el día elegido): lo de siempre
+            grande = s(o, "texto_clases");
+            lista = s(o, "texto_hoy");
         } else {
-            String dia = s(o, "dia"), fecha = s(o, "fecha");
-            if (fecha.length() == 10) fecha = fecha.substring(8, 10) + "/" + fecha.substring(5, 7);
-            cab = (dia.isEmpty() ? "" : Character.toUpperCase(dia.charAt(0)) + dia.substring(1) + " " + fecha).trim();
-            String sinClase = s(o, "sin_clase"), ahora = s(o, "clase_ahora"), prox = s(o, "clase_proxima");
-            if (!sinClase.isEmpty()) grande = sinClase;
-            else if (!ahora.isEmpty()) { grande = "▶ " + ahora; if (!prox.isEmpty()) sig = "Después: " + prox; }
-            else if (!prox.isEmpty()) grande = "Próxima: " + prox;
-            else grande = s(o, "texto_clases");
-            hoy = s(o, "texto_hoy");
-            if (hoy.equals(grande) || hoy.equals(sinClase)) hoy = "";
-            int fuera = o.optInt("tareas_fuera", 0), thoy = o.optInt("tareas_hoy", 0);
-            StringBuilder p = new StringBuilder();
-            if (fuera > 0) p.append("⚠ ").append(fuera).append(fuera == 1 ? " tarea vencida" : " tareas vencidas");
-            if (thoy > 0) { if (p.length() > 0) p.append(" · "); p.append(thoy).append(thoy == 1 ? " tarea hoy" : " tareas hoy"); }
-            String coche = s(o, "texto_coche");
-            if (!coche.isEmpty()) { if (p.length() > 0) p.append("\n"); p.append("🚗 ").append(coche.split("\n")[0]); }
-            pie = p.toString();
+            boolean esHoy = S.optBoolean("hoy", false);
+            String sinClase = s(S, "sin_clase");
+            int n = S.optInt("n", 0);
+            if (S.optBoolean("finde", false)) grande = "Fin de semana";
+            else if (!sinClase.isEmpty()) grande = sinClase;
+            else if (esHoy) {
+                String ahora = s(o, "clase_ahora"), prox = s(o, "clase_proxima");
+                if (!ahora.isEmpty()) { grande = "▶ " + ahora; if (!prox.isEmpty()) sig = "Después: " + prox; }
+                else if (!prox.isEmpty()) grande = "Próxima: " + prox;
+                else grande = n > 0 ? "Has terminado las clases de hoy" : "Hoy no tienes actividades";
+            } else if (n == 0) grande = "Sin actividades este día";
+            else {
+                JSONArray A = S.optJSONArray("acts");
+                String ini = "", fin = "";
+                if (A != null && A.length() > 0) { ini = s(A.optJSONObject(0), "i"); fin = s(A.optJSONObject(A.length() - 1), "f"); }
+                grande = n + (n == 1 ? " actividad" : " actividades") + (ini.isEmpty() ? "" : " · " + ini + "–" + fin);
+            }
+            lista = s(S, "texto");
+            if (lista.equals(grande)) lista = "";
+            if (esHoy) {
+                int fuera = o.optInt("tareas_fuera", 0), thoy = o.optInt("tareas_hoy", 0);
+                StringBuilder p = new StringBuilder();
+                if (fuera > 0) p.append("⚠ ").append(fuera).append(fuera == 1 ? " tarea vencida" : " tareas vencidas");
+                if (thoy > 0) { if (p.length() > 0) p.append(" · "); p.append(thoy).append(thoy == 1 ? " tarea hoy" : " tareas hoy"); }
+                pie = p.toString();
+            }
         }
         long t = Datos.cuando(c);
         String act = t > 0 ? "Act. " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(t)) : "";
@@ -126,16 +252,20 @@ public class HorarioWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.tvGrande, grande);
         v.setTextViewText(R.id.tvSig, sig);
         v.setViewVisibility(R.id.tvSig, sig.isEmpty() ? View.GONE : View.VISIBLE);
-        v.setTextViewText(R.id.tvHoy, hoy);
-        v.setViewVisibility(R.id.tvHoy, hoy.isEmpty() ? View.GONE : View.VISIBLE);
+        v.setTextViewText(R.id.tvHoy, lista);
+        v.setViewVisibility(R.id.tvHoy, lista.isEmpty() ? View.GONE : View.VISIBLE);
         v.setTextViewText(R.id.tvPie, pie);
         v.setViewVisibility(R.id.tvPie, pie.isEmpty() ? View.GONE : View.VISIBLE);
         v.setTextViewText(R.id.tvEstado, estado);
 
-        Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_DIA, elegido);
         PendingIntent pa = PendingIntent.getActivity(c, 2, abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         v.setOnClickPendingIntent(R.id.raiz, pa);
-        v.setOnClickPendingIntent(R.id.btRefrescar, intentRefrescar(c));
+        v.setOnClickPendingIntent(R.id.btRefrescar, pendiente(c, ACT_REFRESCAR, 3));
+        v.setOnClickPendingIntent(R.id.btAnterior, pendiente(c, ACT_ANTERIOR, 4));
+        v.setOnClickPendingIntent(R.id.btSiguiente, pendiente(c, ACT_SIGUIENTE, 5));
+        v.setOnClickPendingIntent(R.id.tvCab, pendiente(c, ACT_HOY, 6));
 
         AppWidgetManager m = AppWidgetManager.getInstance(c);
         m.updateAppWidget(new ComponentName(c, HorarioWidget.class), v);

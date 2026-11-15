@@ -2,7 +2,6 @@ package es.alfaguara.mihorario;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -18,7 +17,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,8 +26,10 @@ import android.widget.Toast;
  * Solo consulta: para hacer más cosas, el botón «Abrir la app» de la página abre la web en el navegador.
  */
 public class MainActivity extends Activity {
+    static final String EXTRA_DIA = "dia";
     private WebView web;
-    private LinearLayout config;
+    /** Pantalla para pegar el enlace. 1.1: es el ScrollView entero (antes quedaba encima de la ventana y no dejaba pulsar las pestañas). */
+    private View config;
     private EditText campo;
     private ProgressBar carga;
 
@@ -118,7 +118,11 @@ public class MainActivity extends Activity {
         boolean hay = e != null;
         config.setVisibility(hay ? View.GONE : View.VISIBLE);
         web.setVisibility(hay ? View.VISIBLE : View.GONE);
-        if (hay) web.loadUrl(e);
+        if (hay) {
+            // 1.1: desde el widget se abre en el día que tenga elegido
+            String dia = getIntent() != null ? getIntent().getStringExtra(EXTRA_DIA) : null;
+            web.loadUrl(dia != null && dia.matches("\\d{4}-\\d{2}-\\d{2}") && !dia.equals(Datos.hoy()) ? e + "&d=" + dia : e);
+        }
         else carga.setVisibility(View.GONE);
         invalidateOptionsMenu();
     }

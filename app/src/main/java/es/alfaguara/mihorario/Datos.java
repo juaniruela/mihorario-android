@@ -8,13 +8,19 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Enlace privado del widget y descarga de los datos (solo lectura). */
+/** Enlace privado del widget, día elegido y descarga de los datos (solo lectura). */
 public final class Datos {
     private static final String PREFS = "mihorario";
     private static final Pattern ENLACE = Pattern.compile("(https?://[^\\s?#]+?/widget\\.php)\\?[^\\s#]*?\\bk=([a-f0-9]{48})");
+    /** Si nadie toca ‹ › en este tiempo, el widget vuelve solo a hoy. */
+    static final long VOLVER_A_HOY_MS = 20 * 60 * 1000L;
 
     private Datos() {}
 
@@ -30,22 +36,50 @@ public final class Datos {
     static String enlace(Context c) { return prefs(c).getString("enlace", null); }
 
     static void guardarEnlace(Context c, String enlace) {
-        prefs(c).edit().putString("enlace", enlace).remove("json").remove("cuando").apply();
+        prefs(c).edit().putString("enlace", enlace).remove("json").remove("cuando").remove("sel").apply();
     }
 
     static String ultimoJson(Context c) { return prefs(c).getString("json", null); }
     static long cuando(Context c) { return prefs(c).getLong("cuando", 0); }
 
-    /** Descarga los datos (JSON) y los guarda para verlos también sin conexión. */
+    /* ---------- fechas ---------- */
+    static String iso(Date d) { return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(d); }
+    static String hoy() { return iso(new Date()); }
+    static String sumar(String iso, int n) {
+        try {
+            Calendar k = Calendar.getInstance();
+            k.setTime(new SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(iso));
+            k.add(Calendar.DAY_OF_MONTH, n);
+            return iso(k.getTime());
+        } catch (Exception e) { return hoy(); }
+    }
+
+    /** Día que enseña el widget (por defecto hoy). */
+    static String sel(Context c) {
+        String s = prefs(c).getString("sel", null);
+        return s == null ? hoy() : s;
+    }
+    static void elegir(Context c, String iso) {
+        prefs(c).edit().putString("sel", iso).putLong("sel_t", System.currentTimeMillis()).apply();
+    }
+    /** En las actualizaciones automáticas: si hace rato que no se cambia de día (o ya es otro día), vuelve a hoy. */
+    static void volverAHoySiToca(Context c) {
+        SharedPreferences p = prefs(c);
+        if (!p.contains("sel")) return;
+        if (System.currentTimeMillis() - p.getLong("sel_t", 0) > VOLVER_A_HOY_MS) p.edit().remove("sel").remove("sel_t").apply();
+    }
+
+    /** Descarga los datos (JSON) del día elegido y los guarda para verlos también sin conexión. */
     static String descargar(Context c) throws Exception {
         String e = enlace(c);
         if (e == null) throw new IllegalStateException("Falta el enlace");
-        HttpURLConnection con = (HttpURLConnection) new URL(e + "&f=json").openConnection();
+        String dia = sel(c);
+        HttpURLConnection con = (HttpURLConnection) new URL(e + "&f=json&d=" + dia).openConnection();
         con.setConnectTimeout(8000);
         con.setReadTimeout(8000);
         con.setUseCaches(false);
         con.setRequestProperty("Accept", "application/json");
-        con.setRequestProperty("User-Agent", "MiHorario-Android/1.0");
+        con.setRequestProperty("User-Agent", "MiHorario-Android/1.1");
         int code = con.getResponseCode();
         InputStream in = code >= 400 ? con.getErrorStream() : con.getInputStream();
         String txt = leer(in);
