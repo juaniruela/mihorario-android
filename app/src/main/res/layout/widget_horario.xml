@@ -69,30 +69,27 @@
         android:paddingEnd="8dp"
         android:paddingBottom="4dp">
 
+        <!-- 1.4: avisos del día en una línea que se desplaza sola (sin el número de actividades) -->
         <TextView
-            android:id="@+id/tvGrande"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
+            android:id="@+id/tvAvisos"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:text="@string/cargando"
-            android:textColor="@color/verde"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvSig"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/texto"
-            android:textSize="13sp"
-            android:visibility="gone" />
+            android:background="@drawable/fondo_aviso"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:textColor="@color/aviso_texto"
+            android:textSize="11sp"
+            android:visibility="gone">
+            <requestFocus />
+        </TextView>
 
         <!-- 1.2: la lista del día (actividades, turnos, tareas, bajas) se desplaza si no cabe -->
         <ListView
