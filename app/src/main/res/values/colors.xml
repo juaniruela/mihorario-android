@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="verde">#1F4A3A</color>
+    <color name="verde_oscuro">#163A2D</color>
+    <color name="naranja">#C25E06</color>
+    <color name="fondo">#F2F6F3</color>
+    <color name="tarjeta">#F7FFFFFF</color>
+    <color name="texto">#1C2B35</color>
+    <color name="suave">#5D6B63</color>
+</resources>
