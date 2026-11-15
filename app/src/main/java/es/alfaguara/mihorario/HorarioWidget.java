@@ -24,7 +24,7 @@ import java.util.Locale;
 
 /**
  * Widget «Mi horario»: el día elegido (‹ anterior · siguiente ›) tal y como lo enseña «Horarios» en la app web;
- * si es hoy, además la clase de ahora o la próxima. Debajo, una lista que se desplaza: actividades, turnos de coche,
+ * arriba, los avisos del día en una línea que se desplaza. Debajo, una lista que se desplaza: actividades, turnos de coche,
  * tareas y quién está de baja, con una línea entre bloques y las filas alternando el color. Solo lectura.
  * Se actualiza solo a menos diez y a y veinte de cada hora, al empezar y acabar cada clase de hoy, a medianoche,
  * al pulsar ⟳ y al abrir la app. Al tocarlo se abre la ventana de Horarios en ese día.
@@ -208,40 +208,30 @@ public class HorarioWidget extends AppWidgetProvider {
 
         String rel = elegido.equals(hoyIso) ? "Hoy" : elegido.equals(Datos.sumar(hoyIso, 1)) ? "Mañana" : elegido.equals(Datos.sumar(hoyIso, -1)) ? "Ayer" : "";
         String cab = diaDe(elegido) + " " + fechaCorta(elegido) + (rel.isEmpty() ? "" : " · " + rel);
-        String grande, sig = "";
+        // 1.4: arriba, los avisos del día en una línea que se desplaza; debajo, la lista de bloques
+        StringBuilder av = new StringBuilder();
         JSONArray filas = new JSONArray();
 
         if (o == null) {
-            grande = Datos.enlace(c) == null ? "Toca aquí y pega tu enlace del widget" : "";
+            if (Datos.enlace(c) == null) av.append("Toca aquí y pega tu enlace del widget");
         } else if (!valen) {
-            grande = "";
+            // los datos guardados son de otro día: se espera a los nuevos
         } else if (S == null) {
             // servidor antiguo (sin el día elegido): lo de siempre
-            grande = s(o, "texto_clases");
             lineas(filas, "Hoy", s(o, "texto_hoy"));
         } else {
-            boolean esHoy = S.optBoolean("hoy", false);
-            String sinClase = s(S, "sin_clase");
-            int n = S.optInt("n", 0);
-            if (S.optBoolean("finde", false)) grande = "Fin de semana";
-            else if (!sinClase.isEmpty()) grande = sinClase;
-            else if (esHoy) {
-                String ahora = s(o, "clase_ahora"), prox = s(o, "clase_proxima");
-                if (!ahora.isEmpty()) { grande = "▶ " + ahora; if (!prox.isEmpty()) sig = "Después: " + prox; }
-                else if (!prox.isEmpty()) grande = "Próxima: " + prox;
-                else grande = n > 0 ? "Has terminado las clases de hoy" : "Hoy no tienes actividades";
-            } else if (n == 0) grande = "Sin actividades este día";
-            else {
-                JSONArray A = S.optJSONArray("acts");
-                String ini = "", fin = "";
-                if (A != null && A.length() > 0) { ini = s(A.optJSONObject(0), "i"); fin = s(A.optJSONObject(A.length() - 1), "f"); }
-                grande = n + (n == 1 ? " actividad" : " actividades") + (ini.isEmpty() ? "" : " · " + ini + "–" + fin);
+            JSONArray AV = S.optJSONArray("avisos");
+            if (AV != null) for (int i = 0; i < AV.length(); i++) {
+                String x = AV.optString(i, "").trim();
+                if (x.isEmpty()) continue;
+                if (av.length() > 0) av.append("     •     ");
+                av.append(x);
             }
             JSONArray B = S.optJSONArray("bloques");
             if (B != null) {
                 for (int b = 0; b < B.length(); b++) {
                     JSONObject bl = B.optJSONObject(b);
-                    if (bl == null) continue;
+                    if (bl == null || "Aviso".equals(s(bl, "tit"))) continue;   // ya va en la línea de avisos
                     boolean rojo = bl.optBoolean("rojo", false);
                     JSONArray F = bl.optJSONArray("filas");
                     try {
@@ -261,10 +251,8 @@ public class HorarioWidget extends AppWidgetProvider {
         String estado = aviso != null ? aviso + (act.isEmpty() ? "" : " · " + act) : act;
 
         v.setTextViewText(R.id.tvCab, cab);
-        v.setTextViewText(R.id.tvGrande, grande);
-        v.setViewVisibility(R.id.tvGrande, grande.isEmpty() ? View.GONE : View.VISIBLE);
-        v.setTextViewText(R.id.tvSig, sig);
-        v.setViewVisibility(R.id.tvSig, sig.isEmpty() ? View.GONE : View.VISIBLE);
+        v.setTextViewText(R.id.tvAvisos, av.toString());
+        v.setViewVisibility(R.id.tvAvisos, av.length() == 0 ? View.GONE : View.VISIBLE);
         // 1.2: lista con desplazamiento (ListaServicio la dibuja a partir de «filas»)
         Datos.prefs(c).edit().putString("filas", filas.toString()).apply();
         Intent srv = new Intent(c, ListaServicio.class);
@@ -278,7 +266,7 @@ public class HorarioWidget extends AppWidgetProvider {
                 .putExtra(MainActivity.EXTRA_DIA, elegido);
         PendingIntent pa = PendingIntent.getActivity(c, 2, abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         v.setOnClickPendingIntent(R.id.raiz, pa);
-        v.setOnClickPendingIntent(R.id.tvGrande, pa);
+        v.setOnClickPendingIntent(R.id.tvAvisos, pa);
         PendingIntent plantilla = PendingIntent.getActivity(c, 7, new Intent(abrir),
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0));
         v.setPendingIntentTemplate(R.id.lista, plantilla);
