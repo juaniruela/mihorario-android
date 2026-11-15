@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'es.alfaguara.mihorario'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'es.alfaguara.mihorario'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        // Clave propia de esta app (solo para instalarla fuera de Google Play): así cada versión nueva se instala encima de la anterior.
+        propia {
+            storeFile file('mihorario.jks')
+            storePassword 'mihorario-alfaguara'
+            keyAlias 'mihorario'
+            keyPassword 'mihorario-alfaguara'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.propia
+        }
+        debug {
+            signingConfig signingConfigs.propia
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
