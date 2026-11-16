@@ -29,6 +29,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -37,6 +38,9 @@ import android.widget.Toast;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.text.Normalizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * App «Mi horario». Tres pantallas con la barra de abajo:
@@ -58,6 +62,11 @@ public class MainActivity extends Activity {
     private int actual = 0;            // 0 Día · 1 Tareas · 2 Servicios
     private final boolean[] cargada = new boolean[3];
     private ValueCallback<Uri[]> subida;
+    /** 1.7: botón flotante FlashWork (pantalla Día). */
+    private View fab;
+    private boolean fwPendiente = false;
+    private int fwOrigen = -1;
+    static final String TRIBBU = "com.hoopcarpool";
     private String[] pendiente;        // descarga a la espera del permiso (Android 8–9)
 
     @Override
@@ -69,6 +78,8 @@ public class MainActivity extends Activity {
         webSer = findViewById(R.id.webSer);
         config = findViewById(R.id.config);
         barra = findViewById(R.id.barra);
+        fab = findViewById(R.id.fab);
+        fab.setOnClickListener(x -> flashwork());
         campo = findViewById(R.id.campo);
         carga = findViewById(R.id.carga);
         tabDia = findViewById(R.id.tabDia);
@@ -110,7 +121,10 @@ public class MainActivity extends Activity {
         ws.setDatabaseEnabled(true);
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
+        // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.7");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
+        else w.addJavascriptInterface(new Dia(), "AppDia");
         w.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
@@ -128,7 +142,10 @@ public class MainActivity extends Activity {
             @Override
             public void onPageStarted(WebView v, String url, Bitmap f) { if (v == vista(actual)) carga.setVisibility(View.VISIBLE); }
             @Override
-            public void onPageFinished(WebView v, String url) { carga.setVisibility(View.GONE); }
+            public void onPageFinished(WebView v, String url) {
+                carga.setVisibility(View.GONE);
+                if (v == webTar && fwPendiente) { fwPendiente = false; lanzarFw(); }
+            }
         });
         // con un WebChromeClient funcionan los avisos y confirmaciones (alert/confirm) y subir archivos
         w.setWebChromeClient(new WebChromeClient() {
@@ -191,6 +208,7 @@ public class MainActivity extends Activity {
         webSer.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
         config.setVisibility(View.GONE);
         barra.setVisibility(View.VISIBLE);
+        fab.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         TextView[] T = {tabDia, tabTar, tabSer};
         for (int k = 0; k < 3; k++) {
             T[k].setAlpha(k == i ? 1f : .6f);
@@ -251,6 +269,7 @@ public class MainActivity extends Activity {
             webTar.setVisibility(View.GONE);
             webSer.setVisibility(View.GONE);
             carga.setVisibility(View.GONE);
+            fab.setVisibility(View.GONE);
             invalidateOptionsMenu();
             return;
         }
@@ -265,8 +284,10 @@ public class MainActivity extends Activity {
         Menu m = pm.getMenu();
         m.add(0, 1, 0, "Actualizar");
         m.add(0, 4, 1, "Aviso para fichar en Séneca").setCheckable(true).setChecked(Fichar.activo(this));
-        m.add(0, 2, 2, "Cambiar el enlace");
-        m.add(0, 3, 3, "Cómo poner el widget");
+        m.add(0, 5, 2, "Abrir la app web");
+        m.add(0, 6, 3, "Trayectos de Tribbu (conductor)");
+        m.add(0, 2, 4, "Cambiar el enlace");
+        m.add(0, 3, 5, "Cómo poner el widget");
         pm.setOnMenuItemClickListener(this::opcion);
         pm.show();
     }
@@ -283,6 +304,16 @@ public class MainActivity extends Activity {
                 if (on) HorarioWidget.refrescar(this);
                 return true;
             }
+            case 5: {
+                String b = baseApp();
+                if (b == null) { Toast.makeText(this, "Primero guarda el enlace de tu widget", Toast.LENGTH_LONG).show(); return true; }
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(b))); }
+                catch (Exception e) { Toast.makeText(this, "No hay ningún navegador para abrirla", Toast.LENGTH_LONG).show(); }
+                return true;
+            }
+            case 6:
+                configTribbu();
+                return true;
             case 1:
                 if (Datos.enlace(this) != null) { vista(actual).reload(); HorarioWidget.refrescar(this); }
                 return true;
@@ -293,6 +324,7 @@ public class MainActivity extends Activity {
                 web.setVisibility(View.GONE);
                 webTar.setVisibility(View.GONE);
                 webSer.setVisibility(View.GONE);
+                fab.setVisibility(View.GONE);
                 return true;
             case 3:
                 new AlertDialog.Builder(this).setTitle("Poner el widget")
@@ -321,9 +353,138 @@ public class MainActivity extends Activity {
     }
 
     /* ---------------------------------------------------------------------------------------- */
+    /*  1.7: FlashWork desde la pantalla Día: abre la ventana de FlashWork de Tareas y, al cerrarla, vuelve.  */
+    /* ---------------------------------------------------------------------------------------- */
+    private void flashwork() {
+        if (Datos.enlace(this) == null) return;
+        fwOrigen = actual;
+        boolean yaCargada = cargada[1];
+        ir(1);
+        if (!yaCargada || webTar.getProgress() < 100) fwPendiente = true; else lanzarFw();
+    }
+
+    /** Espera a que la app web tenga la sesión iniciada (si hay que entrar, después de entrar) y abre FlashWork. */
+    private void lanzarFw() {
+        webTar.evaluateJavascript("(function(){var n=0;function f(){n++;try{if(typeof ME!=='undefined'&&ME&&typeof tareaExpres==='function'){"
+                + "if(typeof usaTareas==='function'&&!usaTareas()){if(window.AppMovil)AppMovil.finFlash(false);return}"
+                + "if(!document.getElementById('txOv'))tareaExpres();"
+                + "var w=setInterval(function(){if(!document.getElementById('txOv')){clearInterval(w);if(window.AppMovil)AppMovil.finFlash(true)}},400);return}}catch(e){}"
+                + "if(n<600)setTimeout(f,300)}f()})()", null);
+    }
+
+    private void finFlash(boolean ok) {
+        if (!ok) Toast.makeText(this, "Tu usuario no tiene las tareas activadas", Toast.LENGTH_LONG).show();
+        int o = fwOrigen;
+        fwOrigen = -1;
+        if (o >= 0 && o != 1 && actual == 1) ir(o);
+    }
+
+    /* ---------------------------------------------------------------------------------------- */
+    /*  1.7: Tribbu desde los turnos de la pantalla Día.                                          */
+    /* ---------------------------------------------------------------------------------------- */
+    class Dia {
+        @JavascriptInterface
+        public void tribbu(String tipo, String sede, boolean conductor) {
+            runOnUiThread(() -> abrirTribbu(tipo, sede, conductor));
+        }
+    }
+
+    static String clave(String s) {
+        String n = Normalizer.normalize(s == null ? "" : s, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return n.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_|_$", "");
+    }
+
+    /**
+     * Conductor/a: a primera hora (Entrada) el trayecto «Ir al trabajo»; a la salida, el de vuelta a su sede (Santa Fe o Aurgi).
+     * Si ha guardado el enlace de ese trayecto de Tribbu, se abre directamente; si no, abre Tribbu y le recuerda qué elegir.
+     */
+    private void abrirTribbu(String tipo, String sede, boolean conductor) {
+        boolean ida = !"S".equals(tipo);
+        if (conductor) {
+            String k = ida ? "tribbu_ida" : "tribbu_vuelta_" + clave(sede);
+            String enlace = Datos.prefs(this).getString(k, "");
+            if (!enlace.isEmpty()) {
+                try {
+                    Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(enlace));
+                    if (getPackageManager().getLaunchIntentForPackage(TRIBBU) != null) i.setPackage(TRIBBU);
+                    startActivity(i);
+                    return;
+                } catch (Exception e) {
+                    try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(enlace))); return; } catch (Exception ignored) {}
+                }
+            }
+        }
+        Intent i = getPackageManager().getLaunchIntentForPackage(TRIBBU);
+        if (i == null) {
+            Toast.makeText(this, "Tribbu no está instalada: te llevo a Google Play", Toast.LENGTH_LONG).show();
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + TRIBBU))); }
+            catch (Exception e) {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + TRIBBU))); } catch (Exception ignored) {}
+            }
+            return;
+        }
+        startActivity(i);
+        if (conductor) {
+            String d = ida ? "elige «Ir al trabajo»" : "elige como destino " + (sede == null || sede.isEmpty() ? "tu sede" : sede);
+            Toast.makeText(this, "En Tribbu, " + d + ". Consejo: guarda el enlace de ese trayecto en ⋯ Más → Trayectos de Tribbu y se abrirá directamente.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private static final Pattern URL = Pattern.compile("https?://\\S+");
+
+    /** Enlaces de los trayectos publicados en Tribbu («Compartir» del trayecto): ida al trabajo y vuelta a cada sede. */
+    private void configTribbu() {
+        String[][] C = {{"tribbu_ida", "Ir al trabajo (entrada, primera hora)"},
+                {"tribbu_vuelta_santa_fe", "Vuelta a Santa Fe (salida)"},
+                {"tribbu_vuelta_aurgi", "Vuelta a Aurgi (salida)"}};
+        LinearLayout L = new LinearLayout(this);
+        L.setOrientation(LinearLayout.VERTICAL);
+        int p = (int) (20 * getResources().getDisplayMetrics().density);
+        L.setPadding(p, p / 2, p, 0);
+        TextView ex = new TextView(this);
+        ex.setText("Si conduces, en Tribbu abre cada trayecto que tengas publicado, pulsa «Compartir» o «Añadir manualmente», copia el enlace y pégalo aquí. "
+                + "Así el botón «Abrir Tribbu» de tus turnos abre directamente ese trayecto. Si lo dejas vacío, se abre Tribbu y te dice qué elegir.");
+        ex.setTextSize(13);
+        L.addView(ex);
+        EditText[] E = new EditText[C.length];
+        for (int k = 0; k < C.length; k++) {
+            TextView t = new TextView(this);
+            t.setText(C[k][1]);
+            t.setTextSize(13);
+            t.setTypeface(null, Typeface.BOLD);
+            t.setPadding(0, p / 2, 0, 0);
+            L.addView(t);
+            E[k] = new EditText(this);
+            E[k].setHint("https://…");
+            E[k].setSingleLine(true);
+            E[k].setTextSize(13);
+            E[k].setText(Datos.prefs(this).getString(C[k][0], ""));
+            L.addView(E[k]);
+        }
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.addView(L);
+        new AlertDialog.Builder(this).setTitle("Trayectos de Tribbu").setView(sv)
+                .setPositiveButton("Guardar", (d, w) -> {
+                    android.content.SharedPreferences.Editor ed = Datos.prefs(this).edit();
+                    for (int k = 0; k < C.length; k++) {
+                        Matcher m = URL.matcher(E[k].getText().toString());
+                        ed.putString(C[k][0], m.find() ? m.group() : "");
+                    }
+                    ed.apply();
+                    Toast.makeText(this, "Trayectos de Tribbu guardados", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", null).show();
+    }
+
+    /* ---------------------------------------------------------------------------------------- */
     /*  Descargas de la app web (Word de actas, adjuntos, CSV…): se guardan en «Descargas».     */
     /* ---------------------------------------------------------------------------------------- */
     class Puente {
+        @JavascriptInterface
+        public void finFlash(boolean ok) {
+            runOnUiThread(() -> MainActivity.this.finFlash(ok));
+        }
+
         @JavascriptInterface
         public void guardar(String nombre, String b64, String mime) {
             runOnUiThread(() -> guardarArchivo(nombre, b64, mime));
