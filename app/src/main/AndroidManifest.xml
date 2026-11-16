@@ -9,6 +9,9 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- 1.5: guardar en Descargas lo que se baja de Tareas (solo hace falta en Android 8 y 9) -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <!-- 1.6: aviso para fichar en Séneca (notificación, vibración y pitidos) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:allowBackup="true"
@@ -55,6 +58,11 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
         </receiver>
+
+        <!-- 1.6: aviso para fichar en Séneca al empezar y al acabar la jornada -->
+        <receiver
+            android:name=".Fichar"
+            android:exported="false" />
 
         <!-- 1.2: lista del widget con desplazamiento -->
         <service
