@@ -29,6 +29,25 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <!-- 1.7: botón flotante FlashWork (tarea o nota por voz), en vez de «Abrir la app» -->
+    <TextView
+        android:id="@+id/fab"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:background="@drawable/fondo_fab"
+        android:elevation="6dp"
+        android:gravity="center"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:contentDescription="FlashWork: tarea o nota por voz"
+        android:text="🎤  FlashWork"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <ProgressBar
         android:id="@+id/carga"
         style="?android:attr/progressBarStyleHorizontal"
