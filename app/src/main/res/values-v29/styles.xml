@@ -6,5 +6,8 @@
         <item name="android:colorPrimaryDark">#163A2D</item>
         <item name="android:colorAccent">#E8710A</item>
         <item name="android:statusBarColor">#163A2D</item>
+        <!-- 1.6: sin barra de título (más espacio); el menú va en «⋯ Más» abajo -->
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 </resources>
