@@ -29,6 +29,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -93,6 +94,10 @@ public class MainActivity extends Activity {
         tabDia.setOnClickListener(x -> ir(0));
         tabTar.setOnClickListener(x -> ir(1));
         tabSer.setOnClickListener(x -> ir(2));
+        findViewById(R.id.tabMas).setOnClickListener(this::menuMas);
+        // 1.6: permiso de notificaciones (Android 13+) para el aviso de fichar en Séneca
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 43);
 
         if (!recibir(getIntent())) mostrar();
     }
@@ -254,17 +259,30 @@ public class MainActivity extends Activity {
         ir(0);
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu m) {
+    /** 1.6: sin barra de título; el menú está en «⋯ Más» de la barra de abajo. */
+    private void menuMas(View ancla) {
+        PopupMenu pm = new PopupMenu(this, ancla);
+        Menu m = pm.getMenu();
         m.add(0, 1, 0, "Actualizar");
-        m.add(0, 2, 1, "Cambiar el enlace");
-        m.add(0, 3, 2, "Cómo poner el widget");
-        return true;
+        m.add(0, 4, 1, "Aviso para fichar en Séneca").setCheckable(true).setChecked(Fichar.activo(this));
+        m.add(0, 2, 2, "Cambiar el enlace");
+        m.add(0, 3, 3, "Cómo poner el widget");
+        pm.setOnMenuItemClickListener(this::opcion);
+        pm.show();
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem it) {
+    private boolean opcion(MenuItem it) {
         switch (it.getItemId()) {
+            case 4: {
+                boolean on = !Fichar.activo(this);
+                Fichar.activar(this, on);
+                new AlertDialog.Builder(this).setTitle("Aviso para fichar en Séneca")
+                        .setMessage(on ? "Activado: 5 minutos antes de tu primera actividad y al acabar la última, el móvil vibrará, pitará dos veces y te recordará fichar. Podrás posponerlo 2 minutos o cerrarlo. No avisa en fines de semana, festivos ni si estás de baja."
+                                : "Desactivado: ya no te recordará fichar.")
+                        .setPositiveButton("Vale", null).show();
+                if (on) HorarioWidget.refrescar(this);
+                return true;
+            }
             case 1:
                 if (Datos.enlace(this) != null) { vista(actual).reload(); HorarioWidget.refrescar(this); }
                 return true;
@@ -281,7 +299,7 @@ public class MainActivity extends Activity {
                         .setMessage(getString(R.string.como_widget)).setPositiveButton("Vale", null).show();
                 return true;
         }
-        return super.onOptionsItemSelected(it);
+        return false;
     }
 
     @Override
