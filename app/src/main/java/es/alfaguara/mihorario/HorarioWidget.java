@@ -66,7 +66,7 @@ public class HorarioWidget extends AppWidgetProvider {
             case Intent.ACTION_TIME_CHANGED:
             case Intent.ACTION_TIMEZONE_CHANGED:
             case "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED":
-                if (!hayWidgets(c)) return;
+                if (!hayWidgets(c) && !Fichar.activo(c)) return;   // 1.6: también sin widget, para el aviso de fichar
                 Datos.volverAHoySiToca(c);
                 actualizar(c, goAsync());
                 return;
@@ -147,7 +147,7 @@ public class HorarioWidget extends AppWidgetProvider {
 
     static void programar(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am == null || !hayWidgets(c)) return;
+        if (am == null || (!hayWidgets(c) && !Fichar.activo(c))) return;
         long t = proximaHora(c, System.currentTimeMillis());
         PendingIntent pi = pendiente(c, ACT_AUTO, 1);
         try {
@@ -171,6 +171,7 @@ public class HorarioWidget extends AppWidgetProvider {
                 }
                 pintar(app, json, error);
                 programar(app);
+                Fichar.programar(app, json);   // 1.6: aviso para fichar en Séneca
             } finally {
                 if (pr != null) pr.finish();
             }
@@ -251,8 +252,15 @@ public class HorarioWidget extends AppWidgetProvider {
         String estado = aviso != null ? aviso + (act.isEmpty() ? "" : " · " + act) : act;
 
         v.setTextViewText(R.id.tvCab, cab);
-        v.setTextViewText(R.id.tvAvisos, av.toString());
-        v.setViewVisibility(R.id.tvAvisos, av.length() == 0 ? View.GONE : View.VISIBLE);
+        // 1.6: la línea de avisos siempre visible y con texto de sobra para que se desplace sin parar
+        String linea = av.length() == 0 ? (o == null ? "" : "Sin avisos para este día") : av.toString();
+        if (!linea.isEmpty()) {
+            StringBuilder rep = new StringBuilder(linea);
+            while (rep.length() < 160) rep.append("          •          ").append(linea);
+            linea = rep.toString();
+        }
+        v.setTextViewText(R.id.tvAvisos, linea);
+        v.setViewVisibility(R.id.tvAvisos, View.VISIBLE);
         // 1.2: lista con desplazamiento (ListaServicio la dibuja a partir de «filas»)
         Datos.prefs(c).edit().putString("filas", filas.toString()).apply();
         Intent srv = new Intent(c, ListaServicio.class);
