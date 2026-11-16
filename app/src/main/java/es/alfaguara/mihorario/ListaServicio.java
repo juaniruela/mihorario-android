@@ -70,6 +70,17 @@ public class ListaServicio extends RemoteViewsService {
             }
             // tocar cualquier fila abre la ventana de Horarios en ese día
             v.setOnClickFillInIntent(R.id.fila_raiz, new Intent());
+            // 1.8: en los turnos de coche, botón «Abrir Tribbu» (conductor: ir al trabajo / destino su sede)
+            if (!"tit".equals(f.optString("k"))) {
+                JSONObject tb = f.optJSONObject("tb");
+                if (tb != null) {
+                    boolean cond = tb.optInt("c", 0) == 1;
+                    String tt = tb.optString("t"), sd = tb.optString("s");
+                    v.setTextViewText(R.id.ftb, "🚙 Abrir Tribbu" + (cond ? " · " + ("S".equals(tt) ? "destino " + (sd.isEmpty() ? "vuelta" : sd) : "ir al trabajo") : ""));
+                    v.setViewVisibility(R.id.ftb, View.VISIBLE);
+                    v.setOnClickFillInIntent(R.id.ftb, new Intent().putExtra("tb_t", tt).putExtra("tb_s", sd).putExtra("tb_c", cond));
+                } else v.setViewVisibility(R.id.ftb, View.GONE);
+            }
             return v;
         }
     }
