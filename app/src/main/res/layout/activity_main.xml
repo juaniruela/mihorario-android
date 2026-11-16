@@ -143,5 +143,15 @@
             android:text="🛠️\nServicios"
             android:textColor="#FFFFFF"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tabMas"
+            android:layout_width="56dp"
+            android:layout_height="match_parent"
+            android:alpha="0.8"
+            android:gravity="center"
+            android:text="⋯\nMás"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

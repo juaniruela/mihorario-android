@@ -87,8 +87,12 @@
             android:singleLine="true"
             android:textColor="@color/aviso_texto"
             android:textSize="11sp"
-            android:visibility="gone">
-            <requestFocus />
+            android:duplicateParentState="true">
+            <!-- 1.6: siempre visible y con el foco, para que se desplace sin parar -->
+            <requestFocus
+                android:duplicateParentState="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
         </TextView>
 
         <!-- 1.2: la lista del día (actividades, turnos, tareas, bajas) se desplaza si no cabe -->
