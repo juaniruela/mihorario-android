@@ -15,4 +15,5 @@
     <color name="rojo_fondo">#1AB3261E</color>
     <color name="aviso_fondo">#FFF3DD</color>
     <color name="aviso_texto">#6B4A00</color>
+    <color name="fila_sig">#FFE7B8</color>
 </resources>
