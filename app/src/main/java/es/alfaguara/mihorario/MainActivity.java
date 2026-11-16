@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> subida;
     /** 1.7: botón flotante FlashWork (1.8: en todas las pantallas y se puede arrastrar). */
     private View fab;
-    private boolean fwPendiente = false;
+    private boolean fwPendiente = false, busPendiente = false;
     private int fwOrigen = -1;
     static final String TRIBBU = "com.hoopcarpool";
     private String[] pendiente;        // descarga a la espera del permiso (Android 8–9)
@@ -79,8 +79,9 @@ public class MainActivity extends Activity {
         webSer = findViewById(R.id.webSer);
         config = findViewById(R.id.config);
         barra = findViewById(R.id.barra);
-        fab = findViewById(R.id.fab);
-        fab.setOnClickListener(x -> flashwork());
+        fab = findViewById(R.id.fabs);    // 1.9: el bloque con 🔍 y FlashWork
+        findViewById(R.id.fab).setOnClickListener(x -> flashwork());
+        findViewById(R.id.fabBus).setOnClickListener(x -> buscar());
         fabMovible();
         campo = findViewById(R.id.campo);
         carga = findViewById(R.id.carga);
@@ -123,35 +124,38 @@ public class MainActivity extends Activity {
         final float d = getResources().getDisplayMetrics().density;
         final float[] ini = new float[4];
         final boolean[] mov = {false};
-        fab.setOnTouchListener((v, e) -> {
-            View p = (View) v.getParent();
+        // 1.9: se arrastra desde cualquiera de los dos botones; mueve el bloque entero
+        View.OnTouchListener arrastre = (b, e) -> {
+            View v = fab, p = (View) fab.getParent();
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     ini[0] = e.getRawX(); ini[1] = e.getRawY(); ini[2] = v.getX(); ini[3] = v.getY();
                     mov[0] = false;
-                    v.setPressed(true);
+                    b.setPressed(true);
                     return true;
                 case MotionEvent.ACTION_MOVE: {
                     float dx = e.getRawX() - ini[0], dy = e.getRawY() - ini[1];
                     if (!mov[0] && Math.hypot(dx, dy) < 10 * d) return true;
-                    if (!mov[0]) { mov[0] = true; v.setPressed(false); v.setAlpha(.85f); }
+                    if (!mov[0]) { mov[0] = true; b.setPressed(false); v.setAlpha(.85f); }
                     v.setX(Math.max(0, Math.min(p.getWidth() - v.getWidth(), ini[2] + dx)));
                     v.setY(Math.max(0, Math.min(p.getHeight() - v.getHeight(), ini[3] + dy)));
                     return true;
                 }
                 case MotionEvent.ACTION_UP:
-                    v.setPressed(false);
-                    if (!mov[0]) { v.performClick(); return true; }
+                    b.setPressed(false);
+                    if (!mov[0]) { b.performClick(); return true; }
                     v.setAlpha(1f);
                     float rx = p.getWidth() - v.getWidth(), ry = p.getHeight() - v.getHeight();
                     Datos.prefs(this).edit().putFloat("fab_x", rx > 0 ? v.getX() / rx : 1f).putFloat("fab_y", ry > 0 ? v.getY() / ry : 1f).apply();
                     return true;
                 case MotionEvent.ACTION_CANCEL:
-                    v.setPressed(false); v.setAlpha(1f);
+                    b.setPressed(false); v.setAlpha(1f);
                     return true;
             }
             return false;
-        });
+        };
+        findViewById(R.id.fab).setOnTouchListener(arrastre);
+        findViewById(R.id.fabBus).setOnTouchListener(arrastre);
         // al cambiar el tamaño (girar el móvil, teclado…) se vuelve a colocar en su sitio
         ((View) fab.getParent()).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> colocarFab());
     }
@@ -166,8 +170,9 @@ public class MainActivity extends Activity {
         fab.setY(Math.max(0, Math.min(ry, sp.getFloat("fab_y", 1f) * ry)));
     }
 
-    /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. */
+    /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. 1.9: también abrir una pantalla (alarma de tarea → Tareas). */
     private void tribbuDesdeWidget(Intent i) {
+        if (i != null && i.hasExtra("pantalla")) { int n = i.getIntExtra("pantalla", 0); i.removeExtra("pantalla"); if (Datos.enlace(this) != null) ir(n); }
         if (i == null || !i.hasExtra("tb_t")) return;
         String t = i.getStringExtra("tb_t"), sd = i.getStringExtra("tb_s");
         boolean cond = i.getBooleanExtra("tb_c", false);
@@ -184,7 +189,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.8");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.9");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         else w.addJavascriptInterface(new Dia(), "AppDia");
         w.setWebViewClient(new WebViewClient() {
@@ -207,6 +212,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView v, String url) {
                 carga.setVisibility(View.GONE);
                 if (v == webTar && fwPendiente) { fwPendiente = false; lanzarFw(); }
+                if (v == webTar && busPendiente) { busPendiente = false; lanzarBus(webTar); }
             }
         });
         // con un WebChromeClient funcionan los avisos y confirmaciones (alert/confirm) y subir archivos
@@ -435,6 +441,28 @@ public class MainActivity extends Activity {
                 + "if(n<600)setTimeout(f,300)}f()})()", null);
     }
 
+    /* 1.9: buscador (alumnos, profesores, grupos, agenda e «ir …» a las pantallas de la app) */
+    private void buscar() {
+        if (Datos.enlace(this) == null) return;
+        if (actual == 2 && cargada[2]) { lanzarBus(webSer); return; }
+        boolean yaCargada = cargada[1];
+        ir(1);
+        if (!yaCargada || webTar.getProgress() < 100) busPendiente = true; else lanzarBus(webTar);
+    }
+
+    private void lanzarBus(WebView w) {
+        w.evaluateJavascript("(function(){var n=0;function f(){n++;try{if(typeof ME!=='undefined'&&ME&&typeof busAbrir==='function'){busAbrir();return}}catch(e){}"
+                + "if(n<600)setTimeout(f,300)}f()})()", null);
+    }
+
+    /** 1.9: «ir …» del buscador: cambia de pantalla y, si ya estaba cargada, hace lo que se pidió (sección de Tareas o Servicios). */
+    private void irDesdeWeb(int n) {
+        if (n < 0 || n > 2) return;
+        boolean yaCargada = n > 0 && cargada[n] && vista(n).getProgress() >= 100;
+        ir(n);
+        if (yaCargada) vista(n).evaluateJavascript("(function(){try{if(window.mvIrPend)mvIrPend()}catch(e){}})()", null);
+    }
+
     private void finFlash(boolean ok) {
         if (!ok) Toast.makeText(this, "Tu usuario no tiene las tareas activadas", Toast.LENGTH_LONG).show();
         int o = fwOrigen;
@@ -543,6 +571,13 @@ public class MainActivity extends Activity {
     /*  Descargas de la app web (Word de actas, adjuntos, CSV…): se guardan en «Descargas».     */
     /* ---------------------------------------------------------------------------------------- */
     class Puente {
+        @JavascriptInterface
+        public void ir(int n) { runOnUiThread(() -> irDesdeWeb(n)); }
+
+        /** 1.9: al guardar una tarea, se vuelven a pedir los datos (y se programan sus alarmas). */
+        @JavascriptInterface
+        public void refrescar() { HorarioWidget.refrescar(MainActivity.this); }
+
         @JavascriptInterface
         public void finFlash(boolean ok) {
             runOnUiThread(() -> MainActivity.this.finFlash(ok));

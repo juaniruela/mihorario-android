@@ -66,7 +66,7 @@ public class HorarioWidget extends AppWidgetProvider {
             case Intent.ACTION_TIME_CHANGED:
             case Intent.ACTION_TIMEZONE_CHANGED:
             case "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED":
-                if (!hayWidgets(c) && !Fichar.activo(c)) return;   // 1.6: también sin widget, para el aviso de fichar
+                if (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c)) return;   // 1.6: también sin widget, para el aviso de fichar (1.9: y las alarmas de tareas)
                 Datos.volverAHoySiToca(c);
                 actualizar(c, goAsync());
                 return;
@@ -80,7 +80,7 @@ public class HorarioWidget extends AppWidgetProvider {
     @Override
     public void onDisabled(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.cancel(pendiente(c, ACT_AUTO, 1));
+        if (am != null && !Fichar.activo(c) && !Alarma.hay(c)) am.cancel(pendiente(c, ACT_AUTO, 1));
     }
 
     private static boolean hayWidgets(Context c) {
@@ -147,7 +147,7 @@ public class HorarioWidget extends AppWidgetProvider {
 
     static void programar(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am == null || (!hayWidgets(c) && !Fichar.activo(c))) return;
+        if (am == null || (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c))) return;
         long t = proximaHora(c, System.currentTimeMillis());
         PendingIntent pi = pendiente(c, ACT_AUTO, 1);
         try {
@@ -172,6 +172,7 @@ public class HorarioWidget extends AppWidgetProvider {
                 pintar(app, json, error);
                 programar(app);
                 Fichar.programar(app, json);   // 1.6: aviso para fichar en Séneca
+                Alarma.programar(app, json);   // 1.9: alarmas de las tareas
             } finally {
                 if (pr != null) pr.finish();
             }
