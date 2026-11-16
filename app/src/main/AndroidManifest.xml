@@ -69,6 +69,11 @@
             android:name=".Fichar"
             android:exported="false" />
 
+        <!-- 1.9: alarmas de las tareas (fecha y hora tope) -->
+        <receiver
+            android:name=".Alarma"
+            android:exported="false" />
+
         <!-- 1.2: lista del widget con desplazamiento -->
         <service
             android:name=".ListaServicio"
