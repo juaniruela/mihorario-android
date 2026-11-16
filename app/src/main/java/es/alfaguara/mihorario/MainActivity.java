@@ -19,6 +19,7 @@ import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -62,7 +63,7 @@ public class MainActivity extends Activity {
     private int actual = 0;            // 0 Día · 1 Tareas · 2 Servicios
     private final boolean[] cargada = new boolean[3];
     private ValueCallback<Uri[]> subida;
-    /** 1.7: botón flotante FlashWork (pantalla Día). */
+    /** 1.7: botón flotante FlashWork (1.8: en todas las pantallas y se puede arrastrar). */
     private View fab;
     private boolean fwPendiente = false;
     private int fwOrigen = -1;
@@ -80,6 +81,7 @@ public class MainActivity extends Activity {
         barra = findViewById(R.id.barra);
         fab = findViewById(R.id.fab);
         fab.setOnClickListener(x -> flashwork());
+        fabMovible();
         campo = findViewById(R.id.campo);
         carga = findViewById(R.id.carga);
         tabDia = findViewById(R.id.tabDia);
@@ -111,6 +113,66 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 43);
 
         if (!recibir(getIntent())) mostrar();
+        tribbuDesdeWidget(getIntent());
+    }
+
+    /* ---------------------------------------------------------------------------------------- */
+    /*  1.8: el botón FlashWork se arrastra a cualquier sitio (se recuerda la posición).          */
+    /* ---------------------------------------------------------------------------------------- */
+    private void fabMovible() {
+        final float d = getResources().getDisplayMetrics().density;
+        final float[] ini = new float[4];
+        final boolean[] mov = {false};
+        fab.setOnTouchListener((v, e) -> {
+            View p = (View) v.getParent();
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    ini[0] = e.getRawX(); ini[1] = e.getRawY(); ini[2] = v.getX(); ini[3] = v.getY();
+                    mov[0] = false;
+                    v.setPressed(true);
+                    return true;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = e.getRawX() - ini[0], dy = e.getRawY() - ini[1];
+                    if (!mov[0] && Math.hypot(dx, dy) < 10 * d) return true;
+                    if (!mov[0]) { mov[0] = true; v.setPressed(false); v.setAlpha(.85f); }
+                    v.setX(Math.max(0, Math.min(p.getWidth() - v.getWidth(), ini[2] + dx)));
+                    v.setY(Math.max(0, Math.min(p.getHeight() - v.getHeight(), ini[3] + dy)));
+                    return true;
+                }
+                case MotionEvent.ACTION_UP:
+                    v.setPressed(false);
+                    if (!mov[0]) { v.performClick(); return true; }
+                    v.setAlpha(1f);
+                    float rx = p.getWidth() - v.getWidth(), ry = p.getHeight() - v.getHeight();
+                    Datos.prefs(this).edit().putFloat("fab_x", rx > 0 ? v.getX() / rx : 1f).putFloat("fab_y", ry > 0 ? v.getY() / ry : 1f).apply();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    v.setPressed(false); v.setAlpha(1f);
+                    return true;
+            }
+            return false;
+        });
+        // al cambiar el tamaño (girar el móvil, teclado…) se vuelve a colocar en su sitio
+        ((View) fab.getParent()).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> colocarFab());
+    }
+
+    private void colocarFab() {
+        android.content.SharedPreferences sp = Datos.prefs(this);
+        if (!sp.contains("fab_x")) return;          // sin mover: abajo a la derecha
+        View p = (View) fab.getParent();
+        float rx = p.getWidth() - fab.getWidth(), ry = p.getHeight() - fab.getHeight();
+        if (rx <= 0 || ry <= 0) return;
+        fab.setX(Math.max(0, Math.min(rx, sp.getFloat("fab_x", 1f) * rx)));
+        fab.setY(Math.max(0, Math.min(ry, sp.getFloat("fab_y", 1f) * ry)));
+    }
+
+    /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. */
+    private void tribbuDesdeWidget(Intent i) {
+        if (i == null || !i.hasExtra("tb_t")) return;
+        String t = i.getStringExtra("tb_t"), sd = i.getStringExtra("tb_s");
+        boolean cond = i.getBooleanExtra("tb_c", false);
+        i.removeExtra("tb_t");
+        abrirTribbu(t, sd, cond);
     }
 
     /** Ajustes comunes de las tres WebView. app=true: Tareas/Servicios (la app web completa). */
@@ -122,7 +184,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.7");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.8");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         else w.addJavascriptInterface(new Dia(), "AppDia");
         w.setWebViewClient(new WebViewClient() {
@@ -208,7 +270,7 @@ public class MainActivity extends Activity {
         webSer.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
         config.setVisibility(View.GONE);
         barra.setVisibility(View.VISIBLE);
-        fab.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+        fab.setVisibility(View.VISIBLE);   // 1.8: en Día, Tareas y Servicios
         TextView[] T = {tabDia, tabTar, tabSer};
         for (int k = 0; k < 3; k++) {
             T[k].setAlpha(k == i ? 1f : .6f);
@@ -227,6 +289,7 @@ public class MainActivity extends Activity {
         super.onNewIntent(i);
         setIntent(i);
         if (!recibir(i)) mostrar();
+        tribbuDesdeWidget(i);
     }
 
     @Override
