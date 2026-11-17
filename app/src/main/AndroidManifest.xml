@@ -70,6 +70,11 @@
             android:name=".Fichar"
             android:exported="false" />
 
+        <!-- 1.11: agenda de cada mañana laborable (y envío manual) -->
+        <receiver
+            android:name=".Agenda"
+            android:exported="false" />
+
         <!-- 1.9: alarmas de las tareas (fecha y hora tope) -->
         <receiver
             android:name=".Alarma"
