@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.08");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.09");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {

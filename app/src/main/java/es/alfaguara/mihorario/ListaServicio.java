@@ -2,6 +2,10 @@ package es.alfaguara.mihorario;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Typeface;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
@@ -65,6 +69,13 @@ public class ListaServicio extends RemoteViewsService {
                         : f.optBoolean("alt") ? R.color.fila_a : R.color.fila_b;
                 v.setInt(R.id.fila_raiz, "setBackgroundResource", fondo);
                 int texto = "rojo".equals(cl) ? c.getColor(R.color.rojo) : "pasada".equals(cl) ? c.getColor(R.color.suave) : c.getColor(R.color.texto);
+                if ("ahora".equals(cl)) {
+                    // 6.09: la actividad de ahora se ve de un vistazo: fondo crema y texto ámbar oscuro en negrita
+                    SpannableString sp = new SpannableString(t);
+                    sp.setSpan(new StyleSpan(Typeface.BOLD), 0, t.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    v.setTextViewText(R.id.ft, sp);
+                    texto = c.getColor(R.color.ahora_txt);
+                }
                 v.setTextColor(R.id.ft, texto);
                 v.setTextColor(R.id.fs, "rojo".equals(cl) ? c.getColor(R.color.rojo) : c.getColor(R.color.suave));
             }
