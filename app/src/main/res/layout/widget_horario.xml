@@ -50,6 +50,15 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
+        <!-- 1.11: abrir la app (tocar el contenido del widget ya no la abre) -->
+        <ImageView
+            android:id="@+id/btAbrir"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:contentDescription="Abrir la app"
+            android:padding="8dp"
+            android:src="@drawable/ic_abrir" />
+
         <ImageView
             android:id="@+id/btRefrescar"
             android:layout_width="36dp"

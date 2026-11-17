@@ -29,6 +29,13 @@
         android:layout_height="match_parent"
         android:visibility="gone" />
 
+    <!-- 1.11: Centro: la app web completa de profesorado y tutoría (Horarios, Ahora, Coches, Mi cuenta…) -->
+    <WebView
+        android:id="@+id/webCen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- 1.7: botón flotante FlashWork. 1.8: en todas las pantallas y arrastrable. 1.9: con el buscador al lado -->
     <LinearLayout
         android:id="@+id/fabs"
@@ -190,8 +197,18 @@
             android:textSize="12sp" />
 
         <TextView
+            android:id="@+id/tabCen"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="🏫\nCentro"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/tabMas"
-            android:layout_width="56dp"
+            android:layout_width="48dp"
             android:layout_height="match_parent"
             android:alpha="0.8"
             android:gravity="center"
