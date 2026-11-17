@@ -40,9 +40,9 @@
     <LinearLayout
         android:id="@+id/fabs"
         android:layout_width="wrap_content"
-        android:layout_height="48dp"
+        android:layout_height="30dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_margin="12dp"
         android:background="@drawable/fondo_fab"
         android:elevation="6dp"
         android:orientation="horizontal"
@@ -50,20 +50,20 @@
 
         <TextView
             android:id="@+id/fabBus"
-            android:layout_width="50dp"
+            android:layout_width="34dp"
             android:layout_height="match_parent"
             android:background="?android:attr/selectableItemBackground"
             android:contentDescription="Buscar alumnos, profesores, grupos, agenda o ir a una pantalla"
             android:gravity="center"
             android:text="🔍"
             android:textColor="#FFFFFF"
-            android:textSize="18sp" />
+            android:textSize="13sp" />
 
         <View
             android:layout_width="1dp"
             android:layout_height="match_parent"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp"
+            android:layout_marginTop="7dp"
+            android:layout_marginBottom="7dp"
             android:background="#66FFFFFF" />
 
         <TextView
@@ -73,12 +73,11 @@
             android:background="?android:attr/selectableItemBackground"
             android:contentDescription="FlashWork: tarea o nota por voz"
             android:gravity="center"
-            android:paddingStart="14dp"
-            android:paddingEnd="18dp"
-            android:text="🎤  FlashWork"
+            android:paddingStart="9dp"
+            android:paddingEnd="12dp"
+            android:text="🎤 FlashWork"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <ProgressBar
@@ -167,7 +166,18 @@
         android:visibility="gone">
 
         <TextView
+            android:id="@+id/tabCen"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="🏫\nCentro"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+
+        <TextView
             android:id="@+id/tabDia"
+            android:visibility="gone"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -196,15 +206,6 @@
             android:textColor="#FFFFFF"
             android:textSize="12sp" />
 
-        <TextView
-            android:id="@+id/tabCen"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="🏫\nCentro"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/tabMas"

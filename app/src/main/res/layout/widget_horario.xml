@@ -126,13 +126,29 @@
             android:textSize="12sp"
             android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/tvEstado"
+        <!-- 6.08: abajo, a la izquierda la versión de la app; a la derecha la hora de actualización -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="end"
-            android:maxLines="1"
-            android:textColor="@color/suave"
-            android:textSize="10sp" />
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvVer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:textColor="@color/suave"
+                android:textSize="10sp" />
+
+            <TextView
+                android:id="@+id/tvEstado"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:maxLines="1"
+                android:textColor="@color/suave"
+                android:textSize="10sp" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>
