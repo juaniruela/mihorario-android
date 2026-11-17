@@ -274,6 +274,7 @@ public class HorarioWidget extends AppWidgetProvider {
         v.setEmptyView(R.id.lista, R.id.vacia);
         v.setViewVisibility(R.id.vacia, filas.length() == 0 ? View.VISIBLE : View.GONE);
         v.setTextViewText(R.id.tvEstado, estado);
+        v.setTextViewText(R.id.tvVer, "v" + version(c));   // 6.08: misma numeración que la app web
 
         Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .putExtra(MainActivity.EXTRA_DIA, elegido);
@@ -304,5 +305,10 @@ public class HorarioWidget extends AppWidgetProvider {
                 filas.put(new JSONObject().put("k", "fila").put("t", x.trim()).put("s", "").put("c", "").put("alt", i++ % 2 == 0));
             }
         } catch (Exception ignored) {}
+    }
+
+    /** 6.08: versión instalada (la misma numeración que la app web). */
+    static String version(Context c) {
+        try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName; } catch (Exception e) { return ""; }
     }
 }

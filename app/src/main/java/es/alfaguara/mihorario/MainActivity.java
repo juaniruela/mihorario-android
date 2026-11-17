@@ -177,7 +177,7 @@ public class MainActivity extends Activity {
     /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. 1.9: también abrir una pantalla (alarma de tarea → Tareas). */
     private void tribbuDesdeWidget(Intent i) {
         if (i != null && i.getBooleanExtra("iseneca", false)) { i.removeExtra("iseneca"); abrirISeneca(); return; }
-        if (i != null && i.hasExtra("pantalla")) { int n = i.getIntExtra("pantalla", 0); i.removeExtra("pantalla"); if (Datos.enlace(this) != null) ir(n); }
+        if (i != null && i.hasExtra("pantalla")) { int n = i.getIntExtra("pantalla", 0); i.removeExtra("pantalla"); if (Datos.enlace(this) != null) ir(n == 0 ? 3 : n); }
         if (i == null || !i.hasExtra("tb_t")) return;
         String t = i.getStringExtra("tb_t"), sd = i.getStringExtra("tb_s");
         boolean cond = i.getBooleanExtra("tb_c", false);
@@ -194,12 +194,13 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.11");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.08");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
-        else w.addJavascriptInterface(new Dia(), "AppDia");
+        if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
+                if (!r.isForMainFrame()) return false;   // 6.08: los marcos (Semana/Consultar de Centro) se quedan dentro
                 Uri u = r.getUrl();
                 String e = Datos.enlace(MainActivity.this);
                 Uri base = e != null ? Uri.parse(e) : null;
@@ -265,6 +266,12 @@ public class MainActivity extends Activity {
 
     private WebView vista(int i) { return i == 1 ? webTar : i == 2 ? webSer : i == 3 ? webCen : web; }
 
+    /** 6.08: clave del enlace del widget (k=…), para Semana y Consultar dentro de Centro. */
+    private String clave() {
+        String e = Datos.enlace(this);
+        try { String k = e == null ? null : Uri.parse(e).getQueryParameter("k"); return k == null ? "" : k; } catch (Exception x) { return ""; }
+    }
+
     private String baseApp() {
         String e = Datos.enlace(this);
         if (e == null) return null;
@@ -291,7 +298,7 @@ public class MainActivity extends Activity {
         }
         if (i > 0 && !cargada[i]) {
             String b = baseApp();
-            if (b != null) { vista(i).loadUrl(b + (i == 1 ? "?movil=tareas" : i == 3 ? "?movil=centro" : "?movil=servicios")); cargada[i] = true; }
+            if (b != null) { vista(i).loadUrl(b + (i == 1 ? "?movil=tareas" : i == 3 ? "?movil=centro&wk=" + Uri.encode(clave()) : "?movil=servicios")); cargada[i] = true; }
         }
         invalidateOptionsMenu();
     }
@@ -349,9 +356,8 @@ public class MainActivity extends Activity {
             invalidateOptionsMenu();
             return;
         }
-        String dia = getIntent() != null ? getIntent().getStringExtra(EXTRA_DIA) : null;
-        web.loadUrl(dia != null && dia.matches("\\d{4}-\\d{2}-\\d{2}") && !dia.equals(Datos.hoy()) ? e + "&d=" + dia : e);
-        ir(0);
+        // 6.08: sin pantalla Día: la app empieza en Centro (Semana, Horarios → Consultar, Ahora, Coches…)
+        ir(3);
     }
 
     /** 1.6: sin barra de título; el menú está en «⋯ Más» de la barra de abajo. */
@@ -422,14 +428,14 @@ public class MainActivity extends Activity {
             return;
         }
         final WebView w = vista(actual);
-        if (actual == 0) {
+        if (actual == 0 || actual == 3) {
             if (w.canGoBack()) w.goBack(); else super.onBackPressed();
             return;
         }
         // Tareas/Servicios: primero el «←» de la propia app web; si no hay, la pantalla Día
         w.evaluateJavascript("(function(){try{return !!(window.mvAtras&&window.mvAtras())}catch(e){return false}})()", r -> {
             if ("true".equals(r)) return;
-            if (w.canGoBack()) w.goBack(); else ir(0);
+            if (w.canGoBack()) w.goBack(); else ir(3);
         });
     }
 
@@ -470,6 +476,7 @@ public class MainActivity extends Activity {
 
     /** 1.9: «ir …» del buscador: cambia de pantalla y, si ya estaba cargada, hace lo que se pidió (sección de Tareas o Servicios). */
     private void irDesdeWeb(int n) {
+        if (n == 0) n = 3;   // 6.08: ya no hay pantalla Día
         if (n < 0 || n > 3) return;
         boolean yaCargada = n > 0 && cargada[n] && vista(n).getProgress() >= 100;
         ir(n);

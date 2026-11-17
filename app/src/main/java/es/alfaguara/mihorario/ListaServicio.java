@@ -61,7 +61,7 @@ public class ListaServicio extends RemoteViewsService {
                 v.setTextViewText(R.id.ft, t);
                 v.setTextViewText(R.id.fs, s);
                 v.setViewVisibility(R.id.fs, s.isEmpty() ? View.GONE : View.VISIBLE);
-                int fondo = "sig".equals(cl) ? R.color.fila_sig : "ahora".equals(cl) || "mio".equals(cl) ? R.color.fila_ahora : "rojo".equals(cl) && f.optBoolean("alt") ? R.color.rojo_fondo
+                int fondo = "sig".equals(cl) ? R.color.fila_sig : "ahora".equals(cl) ? R.drawable.fondo_ahora : "mio".equals(cl) ? R.color.fila_ahora : "rojo".equals(cl) && f.optBoolean("alt") ? R.color.rojo_fondo
                         : f.optBoolean("alt") ? R.color.fila_a : R.color.fila_b;
                 v.setInt(R.id.fila_raiz, "setBackgroundResource", fondo);
                 int texto = "rojo".equals(cl) ? c.getColor(R.color.rojo) : "pasada".equals(cl) ? c.getColor(R.color.suave) : c.getColor(R.color.texto);
