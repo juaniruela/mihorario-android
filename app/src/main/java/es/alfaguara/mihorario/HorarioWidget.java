@@ -66,7 +66,7 @@ public class HorarioWidget extends AppWidgetProvider {
             case Intent.ACTION_TIME_CHANGED:
             case Intent.ACTION_TIMEZONE_CHANGED:
             case "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED":
-                if (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c)) return;   // 1.6: también sin widget, para el aviso de fichar (1.9: y las alarmas de tareas)
+                if (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c) && !Agenda.activa(c)) return;   // 1.6: también sin widget, para el aviso de fichar (1.9: y las alarmas de tareas)
                 Datos.volverAHoySiToca(c);
                 actualizar(c, goAsync());
                 return;
@@ -80,7 +80,7 @@ public class HorarioWidget extends AppWidgetProvider {
     @Override
     public void onDisabled(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am != null && !Fichar.activo(c) && !Alarma.hay(c)) am.cancel(pendiente(c, ACT_AUTO, 1));
+        if (am != null && !Fichar.activo(c) && !Alarma.hay(c) && !Agenda.activa(c)) am.cancel(pendiente(c, ACT_AUTO, 1));
     }
 
     private static boolean hayWidgets(Context c) {
@@ -147,7 +147,7 @@ public class HorarioWidget extends AppWidgetProvider {
 
     static void programar(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am == null || (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c))) return;
+        if (am == null || (!hayWidgets(c) && !Fichar.activo(c) && !Alarma.hay(c) && !Agenda.activa(c))) return;
         long t = proximaHora(c, System.currentTimeMillis());
         PendingIntent pi = pendiente(c, ACT_AUTO, 1);
         try {
@@ -173,6 +173,7 @@ public class HorarioWidget extends AppWidgetProvider {
                 programar(app);
                 Fichar.programar(app, json);   // 1.6: aviso para fichar en Séneca
                 Alarma.programar(app, json);   // 1.9: alarmas de las tareas
+                Agenda.programar(app, json);   // 1.11: agenda de cada mañana y configuración de avisos
             } finally {
                 if (pr != null) pr.finish();
             }
@@ -277,8 +278,7 @@ public class HorarioWidget extends AppWidgetProvider {
         Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .putExtra(MainActivity.EXTRA_DIA, elegido);
         PendingIntent pa = PendingIntent.getActivity(c, 2, abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        v.setOnClickPendingIntent(R.id.raiz, pa);
-        v.setOnClickPendingIntent(R.id.tvAvisos, pa);
+        v.setOnClickPendingIntent(R.id.btAbrir, pa);   // 1.11: solo el botón abre la app (no el contenido)
         PendingIntent plantilla = PendingIntent.getActivity(c, 7, new Intent(abrir),
                 PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0));
         v.setPendingIntentTemplate(R.id.lista, plantilla);

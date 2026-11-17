@@ -69,6 +69,24 @@ public final class Datos {
         if (System.currentTimeMillis() - p.getLong("sel_t", 0) > VOLVER_A_HOY_MS) p.edit().remove("sel").remove("sel_t").apply();
     }
 
+    /** 1.11: descarga los datos de un día sin tocar el día elegido en el widget ni lo guardado (para la agenda). */
+    static String bajar(Context c, String dia) throws Exception {
+        String e = enlace(c);
+        if (e == null) throw new IllegalStateException("Falta el enlace");
+        HttpURLConnection con = (HttpURLConnection) new URL(e + "&f=json&d=" + dia).openConnection();
+        con.setConnectTimeout(10000);
+        con.setReadTimeout(10000);
+        con.setUseCaches(false);
+        con.setRequestProperty("Accept", "application/json");
+        con.setRequestProperty("User-Agent", "MiHorario-Android/1.11");
+        int code = con.getResponseCode();
+        InputStream in = code >= 400 ? con.getErrorStream() : con.getInputStream();
+        String txt = leer(in);
+        con.disconnect();
+        if (code >= 400 || !txt.trim().startsWith("{")) throw new IllegalStateException("Sin datos (" + code + ")");
+        return txt;
+    }
+
     /** Descarga los datos (JSON) del día elegido y los guarda para verlos también sin conexión. */
     static String descargar(Context c) throws Exception {
         String e = enlace(c);

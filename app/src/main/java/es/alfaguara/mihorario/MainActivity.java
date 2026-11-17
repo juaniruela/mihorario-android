@@ -54,14 +54,14 @@ public class MainActivity extends Activity {
     static final String EXTRA_DIA = "dia";
     private static final int ELEGIR_ARCHIVO = 41, PERMISO_GUARDAR = 42;
 
-    private WebView web, webTar, webSer;
+    private WebView web, webTar, webSer, webCen;
     /** Pantalla para pegar el enlace. */
     private View config, barra;
     private EditText campo;
     private ProgressBar carga;
-    private TextView tabDia, tabTar, tabSer;
+    private TextView tabDia, tabTar, tabSer, tabCen;
     private int actual = 0;            // 0 Día · 1 Tareas · 2 Servicios
-    private final boolean[] cargada = new boolean[3];
+    private final boolean[] cargada = new boolean[4];
     private ValueCallback<Uri[]> subida;
     /** 1.7: botón flotante FlashWork (1.8: en todas las pantallas y se puede arrastrar). */
     private View fab;
@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
         web = findViewById(R.id.web);
         webTar = findViewById(R.id.webTar);
         webSer = findViewById(R.id.webSer);
+        webCen = findViewById(R.id.webCen);
         config = findViewById(R.id.config);
         barra = findViewById(R.id.barra);
         fab = findViewById(R.id.fabs);    // 1.9: el bloque con 🔍 y FlashWork
@@ -88,6 +89,7 @@ public class MainActivity extends Activity {
         tabDia = findViewById(R.id.tabDia);
         tabTar = findViewById(R.id.tabTar);
         tabSer = findViewById(R.id.tabSer);
+        tabCen = findViewById(R.id.tabCen);
         TextView ayuda = findViewById(R.id.ayuda);
         ayuda.setText(R.string.ayuda);
 
@@ -105,9 +107,11 @@ public class MainActivity extends Activity {
         preparar(web, false);
         preparar(webTar, true);
         preparar(webSer, true);
+        preparar(webCen, true);
         tabDia.setOnClickListener(x -> ir(0));
         tabTar.setOnClickListener(x -> ir(1));
         tabSer.setOnClickListener(x -> ir(2));
+        tabCen.setOnClickListener(x -> ir(3));
         findViewById(R.id.tabMas).setOnClickListener(this::menuMas);
         // 1.6: permiso de notificaciones (Android 13+) para el aviso de fichar en Séneca
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED)
@@ -190,7 +194,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.10");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.11");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         else w.addJavascriptInterface(new Dia(), "AppDia");
         w.setWebViewClient(new WebViewClient() {
@@ -259,7 +263,7 @@ public class MainActivity extends Activity {
         super.onActivityResult(req, res, data);
     }
 
-    private WebView vista(int i) { return i == 1 ? webTar : i == 2 ? webSer : web; }
+    private WebView vista(int i) { return i == 1 ? webTar : i == 2 ? webSer : i == 3 ? webCen : web; }
 
     private String baseApp() {
         String e = Datos.enlace(this);
@@ -275,18 +279,19 @@ public class MainActivity extends Activity {
         web.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         webTar.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
         webSer.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
+        webCen.setVisibility(i == 3 ? View.VISIBLE : View.GONE);
         config.setVisibility(View.GONE);
         barra.setVisibility(View.VISIBLE);
         fab.setVisibility(View.VISIBLE);   // 1.8: en Día, Tareas y Servicios
-        TextView[] T = {tabDia, tabTar, tabSer};
-        for (int k = 0; k < 3; k++) {
+        TextView[] T = {tabDia, tabTar, tabSer, tabCen};
+        for (int k = 0; k < 4; k++) {
             T[k].setAlpha(k == i ? 1f : .6f);
             T[k].setTypeface(null, k == i ? Typeface.BOLD : Typeface.NORMAL);
             T[k].setBackgroundColor(k == i ? 0x33FFFFFF : 0);
         }
         if (i > 0 && !cargada[i]) {
             String b = baseApp();
-            if (b != null) { vista(i).loadUrl(b + (i == 1 ? "?movil=tareas" : "?movil=servicios")); cargada[i] = true; }
+            if (b != null) { vista(i).loadUrl(b + (i == 1 ? "?movil=tareas" : i == 3 ? "?movil=centro" : "?movil=servicios")); cargada[i] = true; }
         }
         invalidateOptionsMenu();
     }
@@ -323,7 +328,7 @@ public class MainActivity extends Activity {
             return;
         }
         Datos.guardarEnlace(this, e);
-        cargada[1] = cargada[2] = false;
+        cargada[1] = cargada[2] = cargada[3] = false;
         HorarioWidget.refrescar(this);
         Toast.makeText(this, "Enlace guardado. Ya puedes añadir el widget a la pantalla de inicio.", Toast.LENGTH_LONG).show();
         mostrar();
@@ -338,6 +343,7 @@ public class MainActivity extends Activity {
             web.setVisibility(View.GONE);
             webTar.setVisibility(View.GONE);
             webSer.setVisibility(View.GONE);
+            webCen.setVisibility(View.GONE);
             carga.setVisibility(View.GONE);
             fab.setVisibility(View.GONE);
             invalidateOptionsMenu();
@@ -353,7 +359,7 @@ public class MainActivity extends Activity {
         PopupMenu pm = new PopupMenu(this, ancla);
         Menu m = pm.getMenu();
         m.add(0, 1, 0, "Actualizar");
-        m.add(0, 4, 1, "Aviso para fichar en Séneca").setCheckable(true).setChecked(Fichar.activo(this));
+        m.add(0, 7, 1, "Enviar ahora la agenda");   // 1.11: el aviso de fichar va en Mi cuenta → Configuración de avisos
         m.add(0, 5, 2, "Abrir la app web");
         m.add(0, 6, 3, "Trayectos de Tribbu (conductor)");
         m.add(0, 2, 4, "Cambiar el enlace");
@@ -374,6 +380,10 @@ public class MainActivity extends Activity {
                 if (on) HorarioWidget.refrescar(this);
                 return true;
             }
+            case 7:
+                Agenda.enviarAhora(this);
+                Toast.makeText(this, "Preparando la agenda…", Toast.LENGTH_SHORT).show();
+                return true;
             case 5: {
                 String b = baseApp();
                 if (b == null) { Toast.makeText(this, "Primero guarda el enlace de tu widget", Toast.LENGTH_LONG).show(); return true; }
@@ -394,6 +404,7 @@ public class MainActivity extends Activity {
                 web.setVisibility(View.GONE);
                 webTar.setVisibility(View.GONE);
                 webSer.setVisibility(View.GONE);
+                webCen.setVisibility(View.GONE);
                 fab.setVisibility(View.GONE);
                 return true;
             case 3:
@@ -446,6 +457,7 @@ public class MainActivity extends Activity {
     private void buscar() {
         if (Datos.enlace(this) == null) return;
         if (actual == 2 && cargada[2]) { lanzarBus(webSer); return; }
+        if (actual == 3 && cargada[3]) { lanzarBus(webCen); return; }
         boolean yaCargada = cargada[1];
         ir(1);
         if (!yaCargada || webTar.getProgress() < 100) busPendiente = true; else lanzarBus(webTar);
@@ -458,7 +470,7 @@ public class MainActivity extends Activity {
 
     /** 1.9: «ir …» del buscador: cambia de pantalla y, si ya estaba cargada, hace lo que se pidió (sección de Tareas o Servicios). */
     private void irDesdeWeb(int n) {
-        if (n < 0 || n > 2) return;
+        if (n < 0 || n > 3) return;
         boolean yaCargada = n > 0 && cargada[n] && vista(n).getProgress() >= 100;
         ir(n);
         if (yaCargada) vista(n).evaluateJavascript("(function(){try{if(window.mvIrPend)mvIrPend()}catch(e){}})()", null);

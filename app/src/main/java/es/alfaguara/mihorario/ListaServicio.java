@@ -68,8 +68,7 @@ public class ListaServicio extends RemoteViewsService {
                 v.setTextColor(R.id.ft, texto);
                 v.setTextColor(R.id.fs, "rojo".equals(cl) ? c.getColor(R.color.rojo) : c.getColor(R.color.suave));
             }
-            // tocar cualquier fila abre la ventana de Horarios en ese día
-            v.setOnClickFillInIntent(R.id.fila_raiz, new Intent());
+            // 1.11: tocar una fila ya no abre la app (solo el botón de arriba); sí los botones Tribbu / iSéneca
             // 1.8: en los turnos de coche, botón «Abrir Tribbu» (conductor: ir al trabajo / destino su sede)
             if (!"tit".equals(f.optString("k"))) {
                 JSONObject tb = f.optJSONObject("tb");
