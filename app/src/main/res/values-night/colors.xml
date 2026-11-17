@@ -15,5 +15,6 @@
     <color name="rojo_fondo">#26FF8A80</color>
     <color name="aviso_fondo">#3A2E10</color>
     <color name="aviso_texto">#FFE3A8</color>
-    <color name="fila_sig">#5A4413</color>
+    <color name="fila_sig">#22303F</color>
+    <color name="ahora_txt">#FFD58A</color>
 </resources>
