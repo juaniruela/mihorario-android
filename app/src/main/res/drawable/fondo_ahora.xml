@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 6.08: actividad de ahora en el widget: fondo verde más marcado y barra a la izquierda -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item><shape android:shape="rectangle"><solid android:color="#BFE3CF" /></shape></item>
+    <item android:gravity="start|fill_vertical" android:width="4dp"><shape android:shape="rectangle"><solid android:color="#1F7A55" /></shape></item>
+</layer-list>
