@@ -16,6 +16,7 @@
     <!-- 1.7: para saber si Tribbu está instalada y abrirla desde los turnos -->
     <queries>
         <package android:name="com.hoopcarpool" />
+        <package android:name="es.juntadeandalucia.ced.senecadroid" />
     </queries>
 
     <application
