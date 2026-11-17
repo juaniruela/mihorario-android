@@ -172,6 +172,7 @@ public class MainActivity extends Activity {
 
     /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. 1.9: también abrir una pantalla (alarma de tarea → Tareas). */
     private void tribbuDesdeWidget(Intent i) {
+        if (i != null && i.getBooleanExtra("iseneca", false)) { i.removeExtra("iseneca"); abrirISeneca(); return; }
         if (i != null && i.hasExtra("pantalla")) { int n = i.getIntExtra("pantalla", 0); i.removeExtra("pantalla"); if (Datos.enlace(this) != null) ir(n); }
         if (i == null || !i.hasExtra("tb_t")) return;
         String t = i.getStringExtra("tb_t"), sd = i.getStringExtra("tb_s");
@@ -189,7 +190,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.9");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/1.10");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         else w.addJavascriptInterface(new Dia(), "AppDia");
         w.setWebViewClient(new WebViewClient() {
@@ -474,9 +475,24 @@ public class MainActivity extends Activity {
     /*  1.7: Tribbu desde los turnos de la pantalla Día.                                          */
     /* ---------------------------------------------------------------------------------------- */
     class Dia {
+        /** 1.10: botón iSéneca de la primera y la última actividad de la mañana. */
+        @JavascriptInterface
+        public void iseneca() { runOnUiThread(MainActivity.this::abrirISeneca); }
+
         @JavascriptInterface
         public void tribbu(String tipo, String sede, boolean conductor) {
             runOnUiThread(() -> abrirTribbu(tipo, sede, conductor));
+        }
+    }
+
+    /** 1.10: abre la app iSéneca (o Google Play para instalarla). */
+    private void abrirISeneca() {
+        Intent i = getPackageManager().getLaunchIntentForPackage(Fichar.ISENECA);
+        if (i != null) { startActivity(i); return; }
+        Toast.makeText(this, "iSéneca no está instalada: te llevo a Google Play", Toast.LENGTH_LONG).show();
+        try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + Fichar.ISENECA))); }
+        catch (Exception e) {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + Fichar.ISENECA))); } catch (Exception ignored) {}
         }
     }
 

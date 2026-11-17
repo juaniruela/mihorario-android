@@ -31,6 +31,15 @@ public class Fichar extends BroadcastReceiver {
     static final String ACT_CERRAR = "es.alfaguara.mihorario.FICHAR_CERRAR";
     static final String CANAL = "fichar";
     static final String URL_SENECA = "https://seneca.juntadeandalucia.es/seneca/";
+    /** 1.10: app iSéneca de la Junta de Andalucía. */
+    static final String ISENECA = "es.juntadeandalucia.ced.senecadroid";
+
+    /** Abre iSéneca si está instalada; si no, la web de Séneca. */
+    static Intent intentSeneca(Context c) {
+        Intent i = c.getPackageManager().getLaunchIntentForPackage(ISENECA);
+        if (i == null) i = new Intent(Intent.ACTION_VIEW, Uri.parse(URL_SENECA));
+        return i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
     static final int ANTES_MIN = 5, POSPONER_MIN = 2;
 
     /* ---------- activar / desactivar (menú «Más») ---------- */
@@ -143,7 +152,7 @@ public class Fichar extends BroadcastReceiver {
                 .setAutoCancel(true)
                 // al tocarla se abre Séneca (directamente: Android 12+ no deja abrir apps desde un receptor)
                 .setContentIntent(PendingIntent.getActivity(c, 40 + id,
-                        new Intent(Intent.ACTION_VIEW, Uri.parse(URL_SENECA)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        intentSeneca(c),
                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE))
                 .addAction(new Notification.Action.Builder(Icon.createWithResource(c, R.drawable.ic_fichar), "Posponer " + POSPONER_MIN + " min",
                         pi(c, ACT_POSPONER, tipo, hora, 50 + id)).build())

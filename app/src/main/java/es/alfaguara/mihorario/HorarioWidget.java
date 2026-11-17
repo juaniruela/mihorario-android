@@ -244,6 +244,7 @@ public class HorarioWidget extends AppWidgetProvider {
                             JSONObject fila = new JSONObject().put("k", "fila").put("t", s(f, "t")).put("s", s(f, "s"))
                                     .put("c", rojo ? "rojo" : s(f, "c")).put("alt", i % 2 == 0);
                             if (f.optJSONObject("tb") != null) fila.put("tb", f.optJSONObject("tb"));   // 1.8: botón «Abrir Tribbu» en los turnos
+                            if (!s(f, "is").isEmpty()) fila.put("is", s(f, "is"));   // 1.10: botón iSéneca
                             filas.put(fila);
                         }
                     } catch (Exception ignored) {}

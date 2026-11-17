@@ -73,7 +73,15 @@ public class ListaServicio extends RemoteViewsService {
             // 1.8: en los turnos de coche, botón «Abrir Tribbu» (conductor: ir al trabajo / destino su sede)
             if (!"tit".equals(f.optString("k"))) {
                 JSONObject tb = f.optJSONObject("tb");
-                if (tb != null) {
+                String is = f.optString("is");
+                if (!is.isEmpty()) {
+                    // 1.10: primera y última actividad de la mañana: botón iSéneca (para fichar)
+                    v.setTextViewText(R.id.ftb, "◉ iSéneca" + ("E".equals(is) ? " · entrada" : "S".equals(is) ? " · salida" : ""));
+                    v.setInt(R.id.ftb, "setBackgroundResource", R.drawable.fondo_iseneca);
+                    v.setViewVisibility(R.id.ftb, View.VISIBLE);
+                    v.setOnClickFillInIntent(R.id.ftb, new Intent().putExtra("iseneca", true));
+                } else if (tb != null) {
+                    v.setInt(R.id.ftb, "setBackgroundResource", R.drawable.fondo_tribbu);
                     boolean cond = tb.optInt("c", 0) == 1;
                     String tt = tb.optString("t"), sd = tb.optString("s");
                     v.setTextViewText(R.id.ftb, "🚙 Abrir Tribbu" + (cond ? " · " + ("S".equals(tt) ? "destino " + (sd.isEmpty() ? "vuelta" : sd) : "ir al trabajo") : ""));
