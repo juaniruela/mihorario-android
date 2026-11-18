@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Separador entre bloques: una línea y el título del bloque -->
+<!-- Separador entre bloques: una línea y el título del bloque (6.11: con el icono de la app de guardias al final) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/fila_raiz"
     android:layout_width="match_parent"
@@ -14,15 +14,39 @@
         android:layout_height="2dp"
         android:background="@color/separador" />
 
-    <TextView
-        android:id="@+id/titulo"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="4dp"
-        android:paddingTop="3dp"
-        android:paddingBottom="2dp"
-        android:textAllCaps="true"
-        android:textColor="@color/separador"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/titulo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingStart="4dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="2dp"
+            android:textAllCaps="true"
+            android:textColor="@color/separador"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tbApp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_marginTop="2dp"
+            android:background="@drawable/fondo_gapp"
+            android:contentDescription="Abrir la app de guardias"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:text="📲"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </LinearLayout>
 </LinearLayout>
