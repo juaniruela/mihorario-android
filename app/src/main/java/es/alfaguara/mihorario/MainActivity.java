@@ -176,6 +176,7 @@ public class MainActivity extends Activity {
 
     /** 1.8: «Abrir Tribbu» desde una fila de turno del widget. 1.9: también abrir una pantalla (alarma de tarea → Tareas). */
     private void tribbuDesdeWidget(Intent i) {
+        if (i != null && i.hasExtra("flotante")) { String u = i.getStringExtra("flotante"); i.removeExtra("flotante"); abrirFlotante(u); return; }
         if (i != null && i.getBooleanExtra("iseneca", false)) { i.removeExtra("iseneca"); abrirISeneca(); return; }
         if (i != null && i.hasExtra("pantalla")) { int n = i.getIntExtra("pantalla", 0); i.removeExtra("pantalla"); if (Datos.enlace(this) != null) ir(n == 0 ? 3 : n); }
         if (i == null || !i.hasExtra("tb_t")) return;
@@ -194,7 +195,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.09");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.11");
         if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
         if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {
@@ -502,6 +503,61 @@ public class MainActivity extends Activity {
         public void tribbu(String tipo, String sede, boolean conductor) {
             runOnUiThread(() -> abrirTribbu(tipo, sede, conductor));
         }
+
+        /** 6.11: app de guardias en una ventana flotante. */
+        @JavascriptInterface
+        public void flotante(String url) { runOnUiThread(() -> abrirFlotante(url)); }
+    }
+
+    /**
+     * 6.11: ventana flotante (casi a pantalla completa) con una WebView y una ✕ arriba a la derecha.
+     * Se usa para la app de guardias (Google Apps Script) desde el widget, la ventana Día y la app web.
+     */
+    private void abrirFlotante(String url) {
+        if (url == null || !url.startsWith("https://")) return;
+        float dp = getResources().getDisplayMetrics().density;
+        android.app.Dialog d = new android.app.Dialog(this, android.R.style.Theme_DeviceDefault_Light_NoActionBar);
+        android.widget.FrameLayout fl = new android.widget.FrameLayout(this);
+        android.graphics.drawable.GradientDrawable fondo = new android.graphics.drawable.GradientDrawable();
+        fondo.setColor(0xFFFFFFFF); fondo.setCornerRadius(14 * dp);
+        fl.setBackground(fondo); fl.setClipToOutline(true);
+        WebView w = new WebView(this);
+        WebSettings ws = w.getSettings();
+        ws.setJavaScriptEnabled(true); ws.setDomStorageEnabled(true); ws.setSupportMultipleWindows(false);
+        android.webkit.CookieManager.getInstance().setAcceptCookie(true);
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
+        w.setWebChromeClient(new WebChromeClient());
+        fl.addView(w, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        ProgressBar pb = new ProgressBar(this);
+        android.widget.FrameLayout.LayoutParams lpb = new android.widget.FrameLayout.LayoutParams((int) (40 * dp), (int) (40 * dp), android.view.Gravity.CENTER);
+        fl.addView(pb, lpb);
+        w.setWebViewClient(new WebViewClient() {   // todo se abre dentro de la ventana
+            @Override public void onPageFinished(WebView v, String u) { pb.setVisibility(View.GONE); }
+        });
+        TextView x = new TextView(this);
+        x.setText("✕"); x.setTextSize(18); x.setTextColor(0xFFFFFFFF); x.setGravity(android.view.Gravity.CENTER);
+        x.setContentDescription("Cerrar");
+        android.graphics.drawable.GradientDrawable cir = new android.graphics.drawable.GradientDrawable();
+        cir.setShape(android.graphics.drawable.GradientDrawable.OVAL); cir.setColor(0xB3000000);
+        x.setBackground(cir);
+        int s = (int) (36 * dp), m = (int) (6 * dp);
+        android.widget.FrameLayout.LayoutParams lx = new android.widget.FrameLayout.LayoutParams(s, s, android.view.Gravity.TOP | android.view.Gravity.END);
+        lx.setMargins(m, m, m, m);
+        x.setOnClickListener(v -> d.dismiss());
+        fl.addView(x, lx);
+        d.setContentView(fl);
+        d.setOnKeyListener((di, k, e) -> {   // atrás: primero dentro de la app de guardias
+            if (k == android.view.KeyEvent.KEYCODE_BACK && e.getAction() == android.view.KeyEvent.ACTION_UP && w.canGoBack()) { w.goBack(); return true; }
+            return false;
+        });
+        d.setOnDismissListener(di -> { try { w.destroy(); } catch (Exception ignored) {} });
+        if (d.getWindow() != null) {
+            d.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x73000000));
+            d.getWindow().getDecorView().setPadding((int) (10 * dp), (int) (24 * dp), (int) (10 * dp), (int) (24 * dp));
+        }
+        w.loadUrl(url);
+        d.show();
+        if (d.getWindow() != null) d.getWindow().setLayout(-1, -1);
     }
 
     /** 1.10: abre la app iSéneca (o Google Play para instalarla). */
@@ -608,6 +664,10 @@ public class MainActivity extends Activity {
     class Puente {
         @JavascriptInterface
         public void ir(int n) { runOnUiThread(() -> irDesdeWeb(n)); }
+
+        /** 6.11: app de guardias en una ventana flotante (también desde Tareas/Servicios). */
+        @JavascriptInterface
+        public void flotante(String url) { runOnUiThread(() -> abrirFlotante(url)); }
 
         /** 1.9: al guardar una tarea, se vuelven a pedir los datos (y se programan sus alarmas). */
         @JavascriptInterface

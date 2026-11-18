@@ -59,6 +59,12 @@ public class ListaServicio extends RemoteViewsService {
                 int col = c.getColor(rojo ? R.color.rojo : R.color.separador);
                 v.setTextColor(R.id.titulo, col);
                 v.setInt(R.id.linea, "setBackgroundColor", col);
+                // 6.11: «De guardia a las…»: icono al final de la línea que abre la app de guardias en una ventana flotante
+                String app = f.optString("app");
+                if (app.startsWith("https://")) {
+                    v.setViewVisibility(R.id.tbApp, View.VISIBLE);
+                    v.setOnClickFillInIntent(R.id.tbApp, new Intent().putExtra("flotante", app));
+                } else v.setViewVisibility(R.id.tbApp, View.GONE);
             } else {
                 v = new RemoteViews(c.getPackageName(), R.layout.fila);
                 String t = f.optString("t"), s = f.optString("s"), cl = f.optString("c");

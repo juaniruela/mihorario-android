@@ -238,7 +238,7 @@ public class HorarioWidget extends AppWidgetProvider {
                     boolean rojo = bl.optBoolean("rojo", false);
                     JSONArray F = bl.optJSONArray("filas");
                     try {
-                        filas.put(new JSONObject().put("k", "tit").put("t", s(bl, "tit")).put("rojo", rojo));
+                        filas.put(new JSONObject().put("k", "tit").put("t", s(bl, "tit")).put("rojo", rojo).put("app", s(bl, "app")));   // 6.11: app de guardias
                         if (F != null) for (int i = 0; i < F.length(); i++) {
                             JSONObject f = F.optJSONObject(i);
                             if (f == null) continue;
