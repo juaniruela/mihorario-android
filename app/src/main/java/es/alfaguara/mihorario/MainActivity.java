@@ -195,8 +195,8 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.11");
-        if (app) w.addJavascriptInterface(new Puente(), "AppMovil");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.12");
+        if (app) w.addJavascriptInterface(new Puente(w), "AppMovil");
         if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {
             @Override
@@ -662,8 +662,18 @@ public class MainActivity extends Activity {
     /*  Descargas de la app web (Word de actas, adjuntos, CSV…): se guardan en «Descargas».     */
     /* ---------------------------------------------------------------------------------------- */
     class Puente {
+        private final WebView wv;
+        Puente(WebView w) { wv = w; }
+
         @JavascriptInterface
         public void ir(int n) { runOnUiThread(() -> irDesdeWeb(n)); }
+
+        /** 6.12: dictado por voz con el reconocimiento del móvil (el del navegador falla dentro de la app). */
+        @JavascriptInterface
+        public void dictar() { runOnUiThread(() -> dictarEmpezar(wv)); }
+
+        @JavascriptInterface
+        public void pararDictado() { runOnUiThread(() -> dictarParar()); }
 
         /** 6.11: app de guardias en una ventana flotante (también desde Tareas/Servicios). */
         @JavascriptInterface
@@ -734,8 +744,106 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* ---------------------------------------------------------------------------------------- */
+    /*  6.12: dictado por voz nativo (SpeechRecognizer). El texto va a la web con dicNativo().  */
+    /* ---------------------------------------------------------------------------------------- */
+    private static final int PERMISO_MIC = 78;
+    private android.speech.SpeechRecognizer recVoz;
+    private WebView dicWeb;
+    private boolean dicOn;
+
+    private void dicJs(String fn, String a, String b) {
+        WebView w = dicWeb;
+        if (w == null) return;
+        w.evaluateJavascript("(function(){try{if(window." + fn + ")window." + fn + "(" + org.json.JSONObject.quote(a) + "," + org.json.JSONObject.quote(b) + ")}catch(e){}})()", null);
+    }
+
+    void dictarEmpezar(WebView w) {
+        dictarParar();
+        dicWeb = w; dicOn = true;
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, PERMISO_MIC);
+            return;
+        }
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            dicOn = false;
+            dicJs("dicNativoErr", "Este móvil no tiene reconocimiento de voz: instala o activa la app de Google (o «Servicios de voz de Google»).", "");
+            return;
+        }
+        dicEscuchar();
+    }
+
+    private void dicEscuchar() {
+        if (!dicOn) return;
+        if (recVoz == null) {
+            recVoz = android.speech.SpeechRecognizer.createSpeechRecognizer(this);
+            recVoz.setRecognitionListener(new android.speech.RecognitionListener() {
+                private String primero(Bundle b) {
+                    java.util.ArrayList<String> r = b == null ? null : b.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                    return r == null || r.isEmpty() || r.get(0) == null ? "" : r.get(0);
+                }
+                @Override public void onPartialResults(Bundle b) { if (dicOn) dicJs("dicNativo", primero(b), "0"); }
+                @Override public void onResults(Bundle b) {
+                    if (!dicOn) return;
+                    dicJs("dicNativo", primero(b), "1");
+                    carga.postDelayed(MainActivity.this::dicEscuchar, 120);   // sigue escuchando hasta que se pulse «Parar»
+                }
+                @Override public void onError(int e) {
+                    if (!dicOn) return;
+                    if (e == android.speech.SpeechRecognizer.ERROR_NO_MATCH || e == android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT) { carga.postDelayed(MainActivity.this::dicEscuchar, 120); return; }
+                    if (e == android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY || e == android.speech.SpeechRecognizer.ERROR_CLIENT) {
+                        try { recVoz.destroy(); } catch (Exception ignored) {}
+                        recVoz = null;
+                        carga.postDelayed(MainActivity.this::dicEscuchar, 350);
+                        return;
+                    }
+                    String m = e == android.speech.SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ? "Sin permiso para el micrófono: actívalo en Ajustes → Aplicaciones → Mi horario → Permisos."
+                        : e == android.speech.SpeechRecognizer.ERROR_NETWORK || e == android.speech.SpeechRecognizer.ERROR_NETWORK_TIMEOUT ? "Sin conexión: el dictado necesita internet."
+                        : e == android.speech.SpeechRecognizer.ERROR_AUDIO ? "No se puede usar el micrófono (¿lo está usando otra app?)."
+                        : "No se ha podido dictar (error " + e + "). Vuelve a pulsar el micrófono.";
+                    dictarParar();
+                    dicJs("dicNativoErr", m, "");
+                }
+                @Override public void onReadyForSpeech(Bundle b) {}
+                @Override public void onBeginningOfSpeech() {}
+                @Override public void onRmsChanged(float v) {}
+                @Override public void onBufferReceived(byte[] b) {}
+                @Override public void onEndOfSpeech() {}
+                @Override public void onEvent(int t, Bundle b) {}
+            });
+        }
+        Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, "es-ES");
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+        i.putExtra(android.speech.RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+        try { recVoz.startListening(i); }
+        catch (Exception e) { dictarParar(); dicJs("dicNativoErr", "No se ha podido iniciar el dictado.", ""); }
+    }
+
+    void dictarParar() {
+        dicOn = false;
+        if (recVoz != null) {
+            try { recVoz.cancel(); } catch (Exception ignored) {}
+            try { recVoz.destroy(); } catch (Exception ignored) {}
+            recVoz = null;
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        if (dicOn) { dictarParar(); dicJs("dicNativoErr", "Dictado parado.", ""); }
+        super.onStop();
+    }
+
     @Override
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        if (req == PERMISO_MIC) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) dictarEmpezar(dicWeb);
+            else { dicOn = false; dicJs("dicNativoErr", "Sin permiso para el micrófono no se puede dictar. Puedes darlo en Ajustes → Aplicaciones → Mi horario → Permisos.", ""); }
+            return;
+        }
         if (req == PERMISO_GUARDAR && pendiente != null) {
             String[] p = pendiente;
             pendiente = null;

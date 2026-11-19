@@ -63,6 +63,8 @@ public class ListaServicio extends RemoteViewsService {
                 String app = f.optString("app");
                 if (app.startsWith("https://")) {
                     v.setViewVisibility(R.id.tbApp, View.VISIBLE);
+                    String ico = f.optString("ico");
+                    v.setTextViewText(R.id.tbApp, ico.isEmpty() ? "📲" : ico);   // 6.12: 📋 en las bajas
                     v.setOnClickFillInIntent(R.id.tbApp, new Intent().putExtra("flotante", app));
                 } else v.setViewVisibility(R.id.tbApp, View.GONE);
             } else {

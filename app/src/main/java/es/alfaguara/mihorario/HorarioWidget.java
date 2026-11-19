@@ -238,7 +238,7 @@ public class HorarioWidget extends AppWidgetProvider {
                     boolean rojo = bl.optBoolean("rojo", false);
                     JSONArray F = bl.optJSONArray("filas");
                     try {
-                        filas.put(new JSONObject().put("k", "tit").put("t", s(bl, "tit")).put("rojo", rojo).put("app", s(bl, "app")));   // 6.11: app de guardias
+                        filas.put(new JSONObject().put("k", "tit").put("t", s(bl, "tit")).put("rojo", rojo).put("app", urlApp(c, s(bl, "app"))).put("ico", s(bl, "ico")));   // 6.11: app de guardias · 6.12: bajas del día
                         if (F != null) for (int i = 0; i < F.length(); i++) {
                             JSONObject f = F.optJSONObject(i);
                             if (f == null) continue;
@@ -310,5 +310,16 @@ public class HorarioWidget extends AppWidgetProvider {
     /** 6.08: versión instalada (la misma numeración que la app web). */
     static String version(Context c) {
         try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName; } catch (Exception e) { return ""; }
+    }
+
+    /** 6.12: «f=bajas&d=…» (relativo a la ventana) → widget.php?k=<clave>&f=bajas&d=… con la dirección del enlace. */
+    static String urlApp(Context c, String app) {
+        if (app == null || app.isEmpty() || app.startsWith("https://")) return app;
+        try {
+            android.net.Uri u = android.net.Uri.parse(Datos.enlace(c));
+            String k = u.getQueryParameter("k");
+            if (k == null || u.getScheme() == null) return "";
+            return u.getScheme() + "://" + u.getEncodedAuthority() + u.getEncodedPath() + "?k=" + k + "&" + app;
+        } catch (Exception e) { return ""; }
     }
 }
