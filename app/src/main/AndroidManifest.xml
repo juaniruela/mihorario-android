@@ -12,11 +12,17 @@
     <!-- 1.6: aviso para fichar en Séneca (notificación, vibración y pitidos) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 6.12: dictado por voz -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- 1.7: para saber si Tribbu está instalada y abrirla desde los turnos -->
     <queries>
         <package android:name="com.hoopcarpool" />
         <package android:name="es.juntadeandalucia.ced.senecadroid" />
+        <!-- 6.12: reconocimiento de voz del móvil (dictado) -->
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
     </queries>
 
     <application
