@@ -119,6 +119,8 @@ public class MainActivity extends Activity {
 
         if (!recibir(getIntent())) mostrar();
         tribbuDesdeWidget(getIntent());
+        // 6.13: al abrir la app, avisa si hay una versión más nueva que la instalada
+        if (b == null && Datos.enlace(this) != null) Actualizar.comprobar(this, false);
     }
 
     /* ---------------------------------------------------------------------------------------- */
@@ -195,7 +197,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.12");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.13");
         if (app) w.addJavascriptInterface(new Puente(w), "AppMovil");
         if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {
@@ -365,7 +367,8 @@ public class MainActivity extends Activity {
     private void menuMas(View ancla) {
         PopupMenu pm = new PopupMenu(this, ancla);
         Menu m = pm.getMenu();
-        m.add(0, 1, 0, "Actualizar");
+        m.add(0, 1, 0, "Actualizar datos");
+        m.add(0, 8, 0, "Actualizar app");   // 6.13: descarga e instala la última versión
         m.add(0, 7, 1, "Enviar ahora la agenda");   // 1.11: el aviso de fichar va en Mi cuenta → Configuración de avisos
         m.add(0, 5, 2, "Abrir la app web");
         m.add(0, 6, 3, "Trayectos de Tribbu (conductor)");
@@ -387,6 +390,9 @@ public class MainActivity extends Activity {
                 if (on) HorarioWidget.refrescar(this);
                 return true;
             }
+            case 8:
+                Actualizar.comprobar(this, true);
+                return true;
             case 7:
                 Agenda.enviarAhora(this);
                 Toast.makeText(this, "Preparando la agenda…", Toast.LENGTH_SHORT).show();
