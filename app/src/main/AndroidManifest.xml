@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 6.12: dictado por voz -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 6.13: instalar la actualización descargada -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- 1.7: para saber si Tribbu está instalada y abrirla desde los turnos -->
     <queries>
