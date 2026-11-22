@@ -4,14 +4,15 @@ plugins {
 
 android {
     namespace 'es.alfaguara.mihorario'
-    compileSdk 34
+    compileSdk 35
 
     defaultConfig {
         applicationId 'es.alfaguara.mihorario'
         minSdk 26
-        targetSdk 34
-        versionCode 17
-        versionName '6.13'
+        // 6.16: Android 15 (nivel actual): Play Protect no avisa de «app creada para una versión antigua de Android»
+        targetSdk 35
+        versionCode 18
+        versionName '6.16'
     }
 
     signingConfigs {
