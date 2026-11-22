@@ -27,7 +27,8 @@ import java.util.Set;
 /**
  * 1.9: alarmas de las tareas. En la app web, una tarea con fecha y hora puede llevar marcada «⏰ Alarma en el móvil».
  * El servidor manda esas tareas (campo «alarmas» del JSON del widget: id, t, f, h) y aquí se programa una alarma exacta para
- * cada una. Al llegar la hora: notificación, vibración y 5 pitidos; se puede posponer 2 minutos o finalizar.
+ * cada una. Al llegar la hora: notificación, vibración y los pitidos elegidos en Mi cuenta (6.18; 5 por defecto); se puede posponer 2 minutos o finalizar.
+ * 6.18: en Mi cuenta → Configuración de avisos se pueden quitar los avisos de tareas (avisos_cfg.tareas = false): se cancelan todas.
  * Si la tarea deja de tener alarma (o se le quita la fecha o la hora, o se termina), su alarma se cancela al actualizar.
  */
 public class Alarma extends BroadcastReceiver {
@@ -56,6 +57,8 @@ public class Alarma extends BroadcastReceiver {
         try {
             JSONArray L = new JSONObject(json).optJSONArray("alarmas");
             if (L == null) return;                       // servidor antiguo: no se toca nada
+            JSONObject cf = new JSONObject(json).optJSONObject("avisos_cfg");
+            if (cf != null && !cf.optBoolean("tareas", true)) L = new JSONArray();   // 6.18: avisos de tareas desactivados
             SharedPreferences sp = Datos.prefs(c);
             Set<String> ahora = new HashSet<>();
             JSONArray prog = new JSONArray();
@@ -157,7 +160,7 @@ public class Alarma extends BroadcastReceiver {
         try { nm.notify(cod, b.build()); } catch (SecurityException ignored) {}   // sin permiso de notificaciones
     }
 
-    /** Vibración y 5 pitidos. */
+    /** Vibración y los pitidos de Mi cuenta (avisos_cfg.tpitidos, 0–10; 5 si el servidor no lo manda). */
     private static void sonar(Context c) {
         try {
             Vibrator v = (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
@@ -166,7 +169,8 @@ public class Alarma extends BroadcastReceiver {
         ToneGenerator tg = null;
         try {
             tg = new ToneGenerator(AudioManager.STREAM_ALARM, 95);
-            for (int k = 0; k < PITIDOS; k++) {
+            int n = Math.max(0, Math.min(10, Agenda.cfg(c).optInt("tpitidos", PITIDOS)));
+            for (int k = 0; k < n; k++) {
                 tg.startTone(ToneGenerator.TONE_PROP_BEEP, 350);
                 Thread.sleep(700);
             }
