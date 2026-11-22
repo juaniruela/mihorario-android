@@ -197,7 +197,7 @@ public class MainActivity extends Activity {
         ws.setCacheMode(app ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_NO_CACHE);
         ws.setMediaPlaybackRequiresUserGesture(true);
         // 1.7: el servidor reconoce la app (nunca se entra como Administrador ni Directiva)
-        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.18");
+        ws.setUserAgentString(ws.getUserAgentString() + " MiHorarioApp/6.19");
         if (app) w.addJavascriptInterface(new Puente(w), "AppMovil");
         if (!app || w == webCen) w.addJavascriptInterface(new Dia(), "AppDia");   // 6.08: Semana y Consultar van dentro de Centro
         w.setWebViewClient(new WebViewClient() {
@@ -369,7 +369,7 @@ public class MainActivity extends Activity {
         Menu m = pm.getMenu();
         m.add(0, 1, 0, "Actualizar datos");
         m.add(0, 8, 0, "Actualizar app");   // 6.13: descarga e instala la última versión
-        m.add(0, 7, 1, "Enviar ahora la agenda");   // 1.11: el aviso de fichar va en Mi cuenta → Configuración de avisos
+        m.add(0, 7, 1, "Enviar ahora los avisos (turno y horario)");   // 1.11: el aviso de fichar va en Mi cuenta → Configuración de avisos
         m.add(0, 5, 2, "Abrir la app web");
         m.add(0, 6, 3, "Trayectos de Tribbu (conductor)");
         m.add(0, 2, 4, "Cambiar el enlace");

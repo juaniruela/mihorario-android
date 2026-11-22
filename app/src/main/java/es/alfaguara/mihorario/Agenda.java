@@ -23,6 +23,8 @@ import java.util.Calendar;
 import java.util.List;
 
 /**
+ * 6.19: son dos avisos: «🚙 Turno de coche» (solo a quien tiene turno ese día, solo con los datos del turno) y
+ * «📅 Mi horario de hoy» (para todos: horario, tareas y el resto del día). Solo días laborables con clase; a mano, los dos.
  * 1.11: agenda de cada mañana laborable. A la hora elegida en Mi cuenta → Configuración de avisos (07:00 por defecto)
  * llega una notificación con la agenda del día: primero los turnos, luego mi horario, las tareas del día y el resto de bloques.
  * Vibración y pitidos según la configuración. También se puede enviar a mano («⋯ Más» → «Enviar ahora la agenda»).
@@ -32,7 +34,7 @@ public class Agenda extends BroadcastReceiver {
     static final String ACT_AUTO = "es.alfaguara.mihorario.AGENDA";
     static final String ACT_MANUAL = "es.alfaguara.mihorario.AGENDA_MANUAL";
     static final String CANAL = "agenda";
-    static final int CODIGO = 60, NOTIF = 80;
+    static final int CODIGO = 60, NOTIF = 80, NOTIF_TURNO = 81;   // 6.19: dos avisos
 
     static JSONObject cfg(Context c) {
         try { return new JSONObject(Datos.prefs(c).getString("avisos_cfg", "{}")); } catch (Exception e) { return new JSONObject(); }
@@ -100,9 +102,10 @@ public class Agenda extends BroadcastReceiver {
                 try { json = Datos.bajar(app, Datos.hoy()); } catch (Exception e) { json = manual ? Datos.ultimoJson(app) : null; }
                 if (json != null) {
                     JSONObject sel = new JSONObject(json).optJSONObject("sel");
-                    // festivos y días sin clase: la automática no se envía
-                    if (manual || sel == null || !sel.optBoolean("libre", false)) mostrar(app, json);
-                } else if (manual) mostrarTexto(app, "📅 Mi agenda", "No se ha podido descargar la agenda. Comprueba la conexión.");
+                    // 6.19: la automática solo los días laborables con clase (ni fines de semana, ni festivos, ni días sin clase);
+                    // la manual («Enviar ahora la agenda») manda siempre los dos avisos
+                    if (manual || sel == null || !sel.optBoolean("libre", false)) mostrar(app, json, manual);
+                } else if (manual) mostrarTexto(app, "📅 Mi horario de hoy", "No se ha podido descargar la agenda. Comprueba la conexión.", NOTIF, true);
             } catch (Exception ignored) {
             } finally {
                 if (ACT_AUTO.equals(a)) programar(app, null);   // la del siguiente día laborable
@@ -111,8 +114,10 @@ public class Agenda extends BroadcastReceiver {
         }).start();
     }
 
-    /** Arma la agenda: turnos, mi horario, tareas del día y el resto de bloques del día (sin las listas del profesorado). */
-    private static void mostrar(Context c, String json) throws Exception {
+    /** 6.19: dos avisos. 1) «🚙 Turno de coche»: solo los datos del turno de ese día, y solo a quien tiene turno (la manual
+     *  lo manda siempre: si no hay turno, lo dice). 2) «📅 Mi horario de hoy»: el horario del día, las tareas y el resto de
+     *  bloques del día (sin turnos ni las listas del profesorado), para todo el profesorado. Suenan una sola vez. */
+    private static void mostrar(Context c, String json, boolean manual) throws Exception {
         JSONObject o = new JSONObject(json);
         JSONObject sel = o.optJSONObject("sel");
         JSONArray B = sel != null ? sel.optJSONArray("bloques") : null;
@@ -127,10 +132,25 @@ public class Agenda extends BroadcastReceiver {
             else if (t.startsWith("Tarea")) tareas.add(b);
             else resto.add(b);
         }
+        String dia = sel != null ? sel.optString("dia", "") : "";
+        String sufijo = dia.isEmpty() ? "" : " · " + dia;
+        // 1) turno de coche: solo las filas de turno de verdad (las que traen los datos de Tribbu «tb»)
+        StringBuilder tu = new StringBuilder();
+        for (JSONObject b : turnos) {
+            JSONArray F = b.optJSONArray("filas");
+            if (F != null) for (int k = 0; k < F.length(); k++) {
+                JSONObject f = F.optJSONObject(k);
+                if (f == null || f.optJSONObject("tb") == null) continue;
+                String t = f.optString("t").trim(), s = f.optString("s").trim();
+                tu.append(tu.length() > 0 ? "\n" : "").append("• ").append(t).append("\n");
+                if (!s.isEmpty()) for (String l : s.split("\n")) if (!l.trim().isEmpty()) tu.append("   ").append(l.trim()).append("\n");
+            }
+        }
+        boolean hayTurno = tu.length() > 0;
+        // 2) horario del día (y tareas y demás bloques del día)
         StringBuilder sb = new StringBuilder();
         List<JSONObject> orden = new ArrayList<>();
-        orden.addAll(turnos); orden.addAll(horario); orden.addAll(tareas); orden.addAll(resto);
-        int lineas = 0;
+        orden.addAll(horario); orden.addAll(tareas); orden.addAll(resto);
         for (JSONObject b : orden) {
             JSONArray F = b.optJSONArray("filas");
             if (F == null || F.length() == 0) continue;
@@ -144,15 +164,15 @@ public class Agenda extends BroadcastReceiver {
                 sb.append("• ").append(t);
                 if (!s.isEmpty()) sb.append(" — ").append(s.replace("\n", " · "));
                 sb.append("\n");
-                lineas++;
             }
         }
-        String dia = sel != null ? sel.optString("dia", "") : "";
-        String titulo = "📅 Mi agenda" + (dia.isEmpty() ? "" : " · " + dia);
-        mostrarTexto(c, titulo, sb.length() == 0 ? "Nada para hoy." : sb.toString().trim());
+        if (hayTurno || manual)
+            mostrarTexto(c, "🚙 Turno de coche" + sufijo, hayTurno ? tu.toString().trim() : "Hoy no tienes turno de coche.", NOTIF_TURNO, false);
+        else { NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE); if (nm != null) nm.cancel(NOTIF_TURNO); }
+        mostrarTexto(c, "📅 Mi horario de hoy" + sufijo, sb.length() == 0 ? "Nada para hoy." : sb.toString().trim(), NOTIF, true);
     }
 
-    private static void mostrarTexto(Context c, String titulo, String texto) {
+    private static void mostrarTexto(Context c, String titulo, String texto, int id, boolean sonar) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         JSONObject cf = cfg(c);
@@ -175,8 +195,9 @@ public class Agenda extends BroadcastReceiver {
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setColor(0xFF1F4A3A)
                 .setAutoCancel(true)
-                .setContentIntent(PendingIntent.getActivity(c, 61, abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
-        try { nm.notify(NOTIF, b.build()); } catch (SecurityException ignored) {}
+                .setContentIntent(PendingIntent.getActivity(c, 61 + (id - NOTIF), abrir, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        try { nm.notify(id, b.build()); } catch (SecurityException ignored) {}
+        if (!sonar) return;   // 6.19: con dos avisos, vibra y pita solo una vez
         try {
             Vibrator v = (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
             if (vibrar && v != null && v.hasVibrator()) v.vibrate(VibrationEffect.createWaveform(new long[]{0, 500, 250, 500, 250, 500}, -1));
