@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 6.16: Android 15 o más (targetSdk 35). La app sigue dibujándose dentro de las barras del sistema
+         (sin «edge-to-edge» obligatorio), igual que en las versiones anteriores. -->
+    <style name="Tema" parent="@android:style/Theme.DeviceDefault.DayNight">
+        <item name="android:colorPrimary">#1F4A3A</item>
+        <item name="android:colorPrimaryDark">#163A2D</item>
+        <item name="android:colorAccent">#E8710A</item>
+        <item name="android:statusBarColor">#163A2D</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>
