@@ -11,8 +11,8 @@ android {
         minSdk 26
         // 6.16: Android 15 (nivel actual): Play Protect no avisa de «app creada para una versión antigua de Android»
         targetSdk 35
-        versionCode 19
-        versionName '6.18'
+        versionCode 20
+        versionName '6.19'
     }
 
     signingConfigs {
