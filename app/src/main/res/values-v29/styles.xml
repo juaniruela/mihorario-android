@@ -9,5 +9,7 @@
         <!-- 1.6: sin barra de título (más espacio); el menú va en «⋯ Más» abajo -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <!-- 6.16: con targetSdk 35 (Android 15) la app sigue dentro de las barras del sistema, como antes (en Android 10–14 se ignora) -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>
